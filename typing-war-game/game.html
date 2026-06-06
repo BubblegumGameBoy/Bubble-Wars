@@ -733,13 +733,12 @@ const SPRITE_HOBGOBLIN2 = [
 // IMAGE SPRITES
 // ═══════════════════════════════════════════════
 const IMAGE_DEFS = {
-  soldier:   {frames:['images/soldier_1.png','images/soldier_2.png','images/soldier_3.png'], drawH:80},
-  archer:    {frames:['images/lancer_1.png','images/lancer_2.png','images/lancer_3.png'],   drawH:80},
-  hero:      {frames:['images/hero_1.png','images/hero_2.png'],                             drawH:110},
-  goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],                         drawH:65},
-  demonlord: {frames:['images/demonlord_1.png'],                                            drawH:160},
-  allydemon: {frames:['images/demonlord_1.png'],                                            drawH:160},
-  god:       {frames:['images/god_1.png'],                                                  drawH:180},
+  soldier:   {frames:['images/soldier_1.png','images/soldier_3.png'], drawH:80,  yOff:12},
+  archer:    {frames:['images/lancer_1.png','images/lancer_3.png'],   drawH:80,  yOff:12},
+  hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:110, yOff:18},
+  demonlord: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:20},
+  allydemon: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:20},
+  god:       {frames:['images/god_1.png'],                            drawH:180, yOff:25},
 };
 const loadedImages = {};
 let imagesReady = false;
@@ -755,17 +754,18 @@ function preloadImages(done) {
   });
   if (!total) { imagesReady = true; if (done) done(); }
 }
-function drawImageUnit(u, img, drawH) {
+function drawImageUnit(u, img, drawH, yOff) {
   if (!img || !img.complete || !img.naturalWidth) return false;
   const aspect = img.naturalWidth / img.naturalHeight;
   const drawW = Math.round(drawH * aspect);
+  const off = yOff || 0;
   const groundY = u.risingY !== undefined ? u.risingY : (u.landingY !== undefined ? u.landingY : GROUND);
   const cx = Math.round(u.x - drawW/2);
-  const cy = groundY - drawH;
+  const cy = groundY - drawH + off;
   ctx.save();
   if (u.risingY !== undefined) { ctx.beginPath(); ctx.rect(0,0,CW,GROUND); ctx.clip(); }
   if (u.side === 'enemy') {
-    ctx.translate(u.x, groundY); ctx.scale(-1,1);
+    ctx.translate(u.x, groundY + off); ctx.scale(-1,1);
     ctx.drawImage(img, -drawW/2, -drawH, drawW, drawH);
   } else {
     ctx.drawImage(img, cx, cy, drawW, drawH);
@@ -1582,7 +1582,7 @@ function drawUnit(u) {
     if (imgDef) {
       const frameIdx = u.animFrame % imgDef.frames.length;
       const img = loadedImages[imgDef.frames[frameIdx]];
-      if (drawImageUnit(u, img, imgDef.drawH)) return;
+      if (drawImageUnit(u, img, imgDef.drawH, imgDef.yOff)) return;
     }
   }
   // Fallback: pixel art
