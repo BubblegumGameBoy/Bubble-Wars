@@ -1428,6 +1428,43 @@ function updateHeroLanding(dt) {
   }
 }
 
+// 魔王 vs 神　衝突ノックバック
+const CLASH_COOLDOWN = 1200; // ms
+if (!window._clashCooldown) window._clashCooldown = 0;
+function updateBossClash(dt) {
+  window._clashCooldown = Math.max(0, window._clashCooldown - dt);
+  if (window._clashCooldown > 0) return;
+  const god = gs.boss && gs.boss.type === 'god' ? gs.boss : null;
+  const demon = gs.units.find(u => u.type === 'allydemon' && u.state !== 'dead' && u.risingY === undefined);
+  if (!god || !demon) return;
+  const dist = Math.abs(god.x - demon.x);
+  if (dist > 80) return;
+
+  // ノックバック
+  const kbGod   = god.x   < demon.x ? -60 : 60;
+  const kbDemon = demon.x < god.x   ? -60 : 60;
+  god.x   = Math.max(400, Math.min(CW - 40, god.x   + kbGod));
+  demon.x = Math.max(40,  Math.min(CW - 40, demon.x + kbDemon));
+
+  // ダメージ
+  const clashDmg = 80;
+  god.hp   = Math.max(1, god.hp   - clashDmg);
+  demon.hp = Math.max(1, demon.hp - clashDmg);
+
+  // エフェクト
+  const mx = (god.x + demon.x) / 2;
+  gs.effects.push({type:'explosion', x:mx, y:GROUND-60, timer:600, maxT:600, r:120, color:'#ffffff', color2:'#ffaa00'});
+  gs.effects.push({type:'shockwave', x:mx, y:GROUND-30, timer:400, maxT:400, r:160, color:'#ffdd00'});
+  gs.effects.push({type:'msg', x:mx, y:GROUND-120, timer:700, text:'激突！', color:'#ffffff', size:28});
+
+  // 効果音（重い衝突音）
+  tone(80,  0.4, 'sawtooth', 0.12, 60);
+  tone(120, 0.3, 'square',   0.08, 80);
+  tone(200, 0.2, 'sine',     0.06, 40);
+
+  window._clashCooldown = CLASH_COOLDOWN;
+}
+
 function updateAllyDemonRising(dt) {
   for (const u of gs.units) {
     if (u.type === 'allydemon' && u.risingY !== undefined) {
@@ -1865,6 +1902,7 @@ function gameLoop(ts) {
     updateUnits(dt);
     updateHeroLanding(dt);
     updateAllyDemonRising(dt);
+    updateBossClash(dt);
     updateEffects(dt);
   } else {
     updateEffects(dt);
