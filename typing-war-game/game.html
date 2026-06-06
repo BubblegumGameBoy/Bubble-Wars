@@ -1170,31 +1170,16 @@ function updateUnits(dt) {
             x2:u.target.x, y2:ty, timer:250, maxT:250});
         } else if (u.type === 'hero') {
           const ax = u.target.x;
-          const isBossFight = u.target.isBoss && u.target.type === 'demonlord';
-
-          if (isBossFight && !u.senkenUsed) {
-            // 聖剣一閃！初回のみ派手エフェクト
+          // 黄色い大閃光エフェクト（1個）
+          gs.effects.push({type:'explosion', x:ax, y:GROUND-70, timer:600, maxT:600, r:140, color:'#ffee00', color2:'#ffaa00'});
+          tone(200, 0.35, 'sine', 0.1, 60);
+          // 聖剣一閃メッセージ（初回のみ）
+          if (!u.senkenUsed) {
             u.senkenUsed = true;
-            gs.effects.push({type:'explosion', x:ax, y:GROUND-80, timer:700, maxT:700, r:160, color:'#ffffff', color2:'#ffdd00'});
-            gs.effects.push({type:'explosion', x:ax, y:GROUND-40, timer:500, maxT:500, r:100, color:'#ffffaa', color2:'#ff8800'});
-            for (let r=1; r<=3; r++) {
-              gs.effects.push({type:'shockwave', x:ax, y:GROUND-20, timer:200+r*120, maxT:200+r*120, r:r*60, color:'#ffe066'});
-            }
-            for (let i=0; i<10; i++) {
-              const ang = (i/10)*Math.PI*2;
-              gs.effects.push({type:'ember', x:ax+Math.cos(ang)*12, y:GROUND-50, timer:600, maxT:600, color:'#ffffff'});
-            }
-            gs.effects.push({type:'msg', x:ax, y:GROUND-140, timer:800, text:'聖剣一閃！', color:'#ffe066', size:22});
-            tone(60,  0.5, 'sawtooth', 0.15, 100);
-            tone(200, 0.4, 'square',   0.10, 80);
-            tone(440, 0.3, 'sine',     0.08, 60);
-          } else {
-            // 通常攻撃：スラッシュのみ
-            gs.effects.push({type:'slash', x:ax, y:ty, timer:280, side:u.side});
-            tone(300, 0.15, 'square', 0.05, 30);
+            gs.effects.push({type:'msg', x:ax, y:GROUND-150, timer:800, text:'聖剣一閃！', color:'#ffe066', size:22});
           }
-          // 勇者リコイル（毎回少し後退）
-          u.x = Math.max(40, u.x - 18);
+          // リコイル（大きめ後退で連続攻撃を自然に抑制）
+          u.x = Math.max(40, u.x - 50);
         } else if (u.type === 'allydemon') {
           // 魔王スペシャルと同じ見た目の爆炎攻撃
           const ax = u.target.x;
