@@ -1411,7 +1411,7 @@ function spawnEnemies(dt) {
   if (!gs.allyDemonSpawned && gs.wave >= 5 && gs.waveTime >= 80000) {
     gs.allyDemonSpawned = true;
     const ad = makeUnit('allydemon', 'ally', 200);
-    ad.dmg *= 7; // Wave5: 攻撃力7倍
+    ad.dmg *= 28; // Wave5: 攻撃力×28（基本×7の4倍）
     ad.isBossScale = true; // ボスと同じスケールで描画
     ad.risingY = GROUND + ad.spriteH * BS + 20; // 地面の下からスタート
     ad.risingTarget = GROUND;
