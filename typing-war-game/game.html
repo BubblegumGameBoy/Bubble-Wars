@@ -1169,21 +1169,34 @@ function updateUnits(dt) {
           gs.effects.push({type:'spell', x1:u.x+(u.side==='ally'?12:-12), y1:sy-10,
             x2:u.target.x, y2:ty, timer:250, maxT:250});
         } else if (u.type === 'hero') {
-          // 勇者攻撃エフェクト（Wave4）
+          // 勇者攻撃エフェクト（Wave4） — 派手版
           const ax = u.target.x;
-          gs.effects.push({type:'explosion', x:ax, y:GROUND-60, timer:500, maxT:500, r:90, color:'#ffffaa', color2:'#ffcc00'});
-          gs.effects.push({type:'shockwave', x:ax, y:GROUND-30, timer:300, maxT:300, r:100, color:'#ffffff'});
-          gs.effects.push({type:'slash', x:ax, y:ty, timer:280, side:u.side});
-          for (let i=0; i<5; i++) {
-            const ang = (i/5)*Math.PI*2;
-            gs.effects.push({type:'ember', x:ax+Math.cos(ang)*8, y:GROUND-40, timer:400, maxT:400, color:'#ffee88'});
+          const heroY = GROUND - 80;
+          // 大爆発 × 2
+          gs.effects.push({type:'explosion', x:ax, y:GROUND-80, timer:700, maxT:700, r:160, color:'#ffffff', color2:'#ffdd00'});
+          gs.effects.push({type:'explosion', x:ax, y:GROUND-40, timer:500, maxT:500, r:100, color:'#ffffaa', color2:'#ff8800'});
+          // 衝撃波 × 3
+          for (let r=1; r<=3; r++) {
+            gs.effects.push({type:'shockwave', x:ax, y:GROUND-20, timer:200+r*120, maxT:200+r*120, r:r*60, color:'#ffe066'});
           }
-          tone(180, 0.25, 'sine', 0.1, 60);
-          tone(320, 0.2, 'square', 0.07, 40);
-          // 勇者⇔魔王 ノックバック
+          // スラッシュ
+          gs.effects.push({type:'slash', x:ax, y:ty, timer:350, side:u.side});
+          // 光の粒
+          for (let i=0; i<10; i++) {
+            const ang = (i/10)*Math.PI*2;
+            gs.effects.push({type:'ember', x:ax+Math.cos(ang)*12, y:GROUND-50, timer:600, maxT:600, color:'#ffffff'});
+          }
+          // メッセージ
+          gs.effects.push({type:'msg', x:ax, y:GROUND-140, timer:600, text:'聖剣一閃！', color:'#ffe066', size:22});
+          // 効果音（重い衝撃）
+          tone(60,  0.5, 'sawtooth', 0.15, 100);
+          tone(200, 0.4, 'square',   0.10, 80);
+          tone(440, 0.3, 'sine',     0.08, 60);
+          // 勇者⇔魔王 ノックバック＋スタン
           if (u.target.isBoss && u.target.type === 'demonlord') {
-            u.target.x = Math.min(CW - 40, u.target.x + 55);
-            u.x = Math.max(40, u.x - 30);
+            u.target.x = Math.min(CW - 40, u.target.x + 130);
+            u.target.stunTimer = (u.target.stunTimer||0) + 1200; // 1.2秒硬直
+            u.x = Math.max(40, u.x - 50);
           }
         } else if (u.type === 'allydemon') {
           // 魔王スペシャルと同じ見た目の爆炎攻撃
