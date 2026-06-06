@@ -1244,14 +1244,8 @@ function updateUnits(dt) {
       }
 
       if (u.side === 'enemy' && u.x <= 68) {
-        if (u.isBoss) {
-          endGame('lose');
-          return;
-        } else {
-          u.state = 'dead';
-          if (gs.state === 'playing') triggerBossSpawn();
-          continue;
-        }
+        endGame('lose');
+        return;
       }
 
       // Build candidate list for targeting
