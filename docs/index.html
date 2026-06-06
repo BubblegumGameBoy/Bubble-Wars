@@ -1178,8 +1178,12 @@ function updateUnits(dt) {
             u.senkenUsed = true;
             gs.effects.push({type:'msg', x:ax, y:GROUND-150, timer:800, text:'聖剣一閃！', color:'#ffe066', size:22});
           }
-          // リコイル（大きめ後退で連続攻撃を自然に抑制）
+          // リコイル後退
           u.x = Math.max(40, u.x - 50);
+          // 魔王戦は攻撃間隔を長くして連続攻撃防止
+          if (u.target.isBoss && u.target.type === 'demonlord') {
+            u.attackTimer = -1800; // 次の攻撃まで2600ms待機（atkRate800+1800）
+          }
         } else if (u.type === 'allydemon') {
           // 魔王スペシャルと同じ見た目の爆炎攻撃
           const ax = u.target.x;
