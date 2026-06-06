@@ -1022,7 +1022,7 @@ function handleTyping() {
 // ═══════════════════════════════════════════════
 function spawnAlly() {
   gs.spawnCount++;
-  const type = (gs.spawnCount % 7 === 0) ? 'archer' : 'soldier';
+  const type = 'soldier';
   gs.units.push(makeUnit(type, 'ally', 68));
   gs.effects.push({type:'spawn', x:80, y:GROUND-22, timer:500, color:'#4dff6e'});
 }
