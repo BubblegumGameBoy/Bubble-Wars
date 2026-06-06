@@ -1291,6 +1291,29 @@ function triggerBossSpawn() {
   const boss = makeBoss(gs.wave);
   gs.boss = boss;
   gs.waveMsg = {text:`⚠ ${BOSS_DEFS[gs.wave-1].name} 出現！`, timer:2500, color:'#ff4400'};
+
+  // 魔王登場テロップ＋効果音
+  if (boss.type === 'demonlord') {
+    gs.effects.push({type:'msg', x:CW/2, y:CH/2-20, timer:3000, text:'魔王が現れた！', color:'#ff2200', size:36});
+    gs.effects.push({type:'explosion', x:CW/2, y:GROUND-40, timer:800, maxT:800, r:200, color:'#440000', color2:'#ff2200'});
+    for (let r=1; r<=4; r++) {
+      gs.effects.push({type:'shockwave', x:CW/2, y:GROUND-20, timer:400+r*150, maxT:400+r*150, r:r*70, color:'#ff2200'});
+    }
+    // 不気味な重低音
+    const a = getAC(); if (a) {
+      [55, 73, 49].forEach((f, i) => {
+        const o = a.createOscillator(), g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.type = 'sawtooth'; o.frequency.value = f;
+        g.gain.setValueAtTime(0, a.currentTime + i*0.15);
+        g.gain.linearRampToValueAtTime(0.3, a.currentTime + i*0.15 + 0.1);
+        g.gain.linearRampToValueAtTime(0, a.currentTime + i*0.15 + 1.2);
+        o.start(a.currentTime + i*0.15);
+        o.stop(a.currentTime + i*0.15 + 1.5);
+      });
+    }
+  }
+
   updateBossBar();
 }
 
