@@ -1168,6 +1168,23 @@ function updateUnits(dt) {
           const sy = GROUND - u.spriteH * S / 2;
           gs.effects.push({type:'spell', x1:u.x+(u.side==='ally'?12:-12), y1:sy-10,
             x2:u.target.x, y2:ty, timer:250, maxT:250});
+        } else if (u.type === 'hero') {
+          // 勇者攻撃エフェクト（Wave4）
+          const ax = u.target.x;
+          gs.effects.push({type:'explosion', x:ax, y:GROUND-60, timer:500, maxT:500, r:90, color:'#ffffaa', color2:'#ffcc00'});
+          gs.effects.push({type:'shockwave', x:ax, y:GROUND-30, timer:300, maxT:300, r:100, color:'#ffffff'});
+          gs.effects.push({type:'slash', x:ax, y:ty, timer:280, side:u.side});
+          for (let i=0; i<5; i++) {
+            const ang = (i/5)*Math.PI*2;
+            gs.effects.push({type:'ember', x:ax+Math.cos(ang)*8, y:GROUND-40, timer:400, maxT:400, color:'#ffee88'});
+          }
+          tone(180, 0.25, 'sine', 0.1, 60);
+          tone(320, 0.2, 'square', 0.07, 40);
+          // 勇者⇔魔王 ノックバック
+          if (u.target.isBoss && u.target.type === 'demonlord') {
+            u.target.x = Math.min(CW - 40, u.target.x + 55);
+            u.x = Math.max(40, u.x - 30);
+          }
         } else if (u.type === 'allydemon') {
           // 魔王スペシャルと同じ見た目の爆炎攻撃
           const ax = u.target.x;
@@ -1181,6 +1198,11 @@ function updateUnits(dt) {
             gs.effects.push({type:'ember', x:ax+Math.cos(ang)*10, y:GROUND-20, timer:500, maxT:500, color:'#ff6600'});
           }
           tone(120, 0.3, 'sawtooth', 0.09, 80);
+          // 魔王⇔神 ノックバック（Wave5）
+          if (gs.wave === 5 && u.target.type === 'god') {
+            u.target.x = Math.min(CW - 40, u.target.x + 60);
+            u.x = Math.max(40, u.x - 35);
+          }
         } else {
           gs.effects.push({type:'slash', x:u.target.x, y:ty, timer:280, side:u.side});
         }
@@ -1374,6 +1396,7 @@ function spawnEnemies(dt) {
   if (!gs.allyDemonSpawned && gs.wave >= 5 && gs.waveTime >= 80000) {
     gs.allyDemonSpawned = true;
     const ad = makeUnit('allydemon', 'ally', 200);
+    ad.dmg *= 7; // Wave5: 攻撃力7倍
     ad.isBossScale = true; // ボスと同じスケールで描画
     ad.risingY = GROUND + ad.spriteH * BS + 20; // 地面の下からスタート
     ad.risingTarget = GROUND;
