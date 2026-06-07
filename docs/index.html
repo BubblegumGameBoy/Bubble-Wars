@@ -1017,7 +1017,7 @@ function makeUnit(type, side, x) {
   };
   if (type==='soldier')   { u.hp=u.maxHp=35*allyHpMult;  u.dmg=11;  u.atkRate=1000; u.range=34;  u.speed=0.046; u.spriteW=12; u.spriteH=18; }
   if (type==='archer')    { u.hp=u.maxHp=22*allyHpMult;  u.dmg=15;  u.atkRate=1400; u.range=140; u.speed=0.035; u.meleeRange=38; u.spriteW=12; u.spriteH=18; }
-  if (type==='hero')      { u.hp=u.maxHp=9999;            u.dmg=330; u.atkRate=800;  u.range=40;  u.speed=0.055; u.spriteW=12; u.spriteH=18; u.isHero=true; u.drawScale=1.5; }
+  if (type==='hero')      { u.hp=u.maxHp=9999;            u.dmg=120; u.atkRate=1200; u.range=40;  u.speed=0.055; u.spriteW=12; u.spriteH=18; u.isHero=true; u.drawScale=1.5; }
   if (type==='allydemon') { u.hp=u.maxHp=9999;            u.dmg=120; u.atkRate=1100; u.range=46;  u.speed=0.025; u.spriteW=12; u.spriteH=18; }
   if (type==='goblin')    { u.hp=u.maxHp=Math.round(80*waveMult);  u.dmg=2;  u.atkRate=1300; u.range=32; u.speed=0.038; u.score=10; u.spriteW=10; u.spriteH=14; }
   if (type==='hobgoblin') { u.hp=u.maxHp=Math.round(160*waveMult); u.dmg=6;  u.atkRate=1600; u.range=32; u.speed=0.024; u.score=25; u.spriteW=13; u.spriteH=18; }
@@ -1342,6 +1342,13 @@ function updateUnits(dt) {
             u.target.x = Math.min(CW - 40, u.target.x + 60);
             u.x = Math.max(40, u.x - 35);
           }
+        } else if (u.isBoss && u.type === 'god') {
+          // 神の通常攻撃：黄金の打撃エフェクト
+          const ax = u.target.x;
+          gs.effects.push({type:'explosion', x:ax, y:GROUND-50, timer:500, maxT:500, r:100, color:'#ffffcc', color2:'#ffcc00'});
+          gs.effects.push({type:'diagBeam', x1:u.x, y1:GROUND-160, x2:ax, y2:GROUND-30, timer:400, maxT:400});
+          for (let r=1; r<=3; r++) gs.effects.push({type:'shockwave', x:ax, y:GROUND-20, timer:200+r*80, maxT:200+r*80, r:r*38, color:'#ffee44'});
+          tone(220, 0.3, 'sine', 0.09, 280);
         } else {
           gs.effects.push({type:'slash', x:u.target.x, y:ty, timer:280, side:u.side});
         }
@@ -1580,6 +1587,22 @@ function spawnEnemies(dt) {
     ad.risingSpeed = 0.12; // px/ms
     gs.units.push(ad);
     gs.effects.push({type:'msg', x:CW/2, y:CH/2-40, timer:2000, text:'地の底が、揺れる…', color:'#aa00ff'});
+  }
+
+  // 勇者: Wave2・Wave3 — 敵が城手前（x≤200）に来たら緊急サポート降臨（1回だけ）
+  if (!gs.heroSpawned && (gs.wave === 2 || gs.wave === 3)) {
+    const nearEnemy = gs.units.find(u => u.side === 'enemy' && u.state !== 'dead' && u.x <= 200);
+    if (nearEnemy) {
+      gs.heroSpawned = true;
+      const hero = makeUnit('hero', 'ally', 110);
+      hero.landingY = -hero.spriteH * S * 1.5;
+      hero.landingTarget = GROUND;
+      hero.landingSpeed = 0.6;
+      gs.units.push(hero);
+      playHeroFanfare();
+      gs.heroMsg = { timer: 3500 };
+      gs.effects.push({type:'msg', x:CW/2, y:CH/2-40, timer:2200, text:'助けに来た！', color:'#ffe066', size:30});
+    }
   }
 
   // 勇者: Wave4 のみ、1分30秒後に1回だけ出現 (空から落下)
