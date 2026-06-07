@@ -1846,6 +1846,8 @@ function addScore(pts, x, y) {
     gs.effects.push({type:'msg', x, y: y ?? GROUND-55, timer:700, text:`+${pts}`, color:'#FFD700', size:16});
   }
 }
+
+function updateHUD() {
   document.getElementById('scoreNum').textContent = gs.score.toLocaleString();
   const sec = Math.floor(gs.waveTime/1000);
   document.getElementById('timerNum').textContent = `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
