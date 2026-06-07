@@ -882,6 +882,10 @@ function drawImageUnit(u, img, drawH, yOff) {
   if (u.type === 'god' && u.risingY === undefined) {
     groundY -= 10 + 8 * Math.sin(Date.now() / 600);
   }
+  // 魔王：地に足をつけたまま威圧的に上下に揺れる（呼吸）
+  if ((u.type === 'demonlord' || u.type === 'allydemon') && u.risingY === undefined) {
+    groundY -= 3 + 3 * Math.sin(Date.now() / 520);
+  }
   const cx = Math.round(u.x - drawW/2);
   const cy = groundY - drawH + off;
   ctx.save();
@@ -905,6 +909,16 @@ function drawImageUnit(u, img, drawH, yOff) {
     ctx.save(); ctx.globalAlpha=0.18+0.12*pulse; ctx.globalCompositeOperation='lighter';
     const grad=ctx.createRadialGradient(u.x,cy2,0,u.x,cy2,drawH*0.7);
     grad.addColorStop(0,'#fff7c0'); grad.addColorStop(0.5,'#ffe06688'); grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(u.x,cy2,drawH*0.7,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // 魔王：脈動する暗黒（赤黒）オーラ
+  if ((u.type === 'demonlord' || u.type === 'allydemon') && u.risingY === undefined) {
+    const cy2 = groundY - drawH*0.45 + off;
+    const pulse = 0.5+0.5*Math.sin(Date.now()/380);
+    ctx.save(); ctx.globalAlpha=0.16+0.14*pulse; ctx.globalCompositeOperation='lighter';
+    const grad=ctx.createRadialGradient(u.x,cy2,0,u.x,cy2,drawH*0.7);
+    grad.addColorStop(0,'#ff3300'); grad.addColorStop(0.5,'#88000088'); grad.addColorStop(1,'transparent');
     ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(u.x,cy2,drawH*0.7,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
