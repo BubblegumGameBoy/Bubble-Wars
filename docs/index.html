@@ -230,6 +230,36 @@ function playBossSpawn() {
     o.start(t); o.stop(t+0.35);
   });
 }
+function playDemonBirth() {
+  const a = getAC(); if (!a) return;
+  // 地響き（上昇する重低音スイープ）
+  const o1 = a.createOscillator(), g1 = a.createGain();
+  o1.connect(g1); g1.connect(a.destination);
+  o1.type = 'sawtooth';
+  o1.frequency.setValueAtTime(35, a.currentTime);
+  o1.frequency.exponentialRampToValueAtTime(110, a.currentTime + 1.4);
+  g1.gain.setValueAtTime(0.0001, a.currentTime);
+  g1.gain.exponentialRampToValueAtTime(0.18, a.currentTime + 0.6);
+  g1.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 1.8);
+  o1.start(a.currentTime); o1.stop(a.currentTime + 1.9);
+  // 不気味な金属的ヒット
+  [[110,0.0],[146,0.45],[110,0.9],[73,1.35]].forEach(([f,d]) => {
+    const o=a.createOscillator(), g=a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type='square'; o.frequency.value=f;
+    const t=a.currentTime+d;
+    g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+    o.start(t); o.stop(t+0.45);
+  });
+  // 爆誕インパクト
+  const o2=a.createOscillator(), g2=a.createGain();
+  o2.connect(g2); g2.connect(a.destination);
+  o2.type='sawtooth'; o2.frequency.setValueAtTime(180, a.currentTime+1.3);
+  o2.frequency.exponentialRampToValueAtTime(40, a.currentTime+1.7);
+  g2.gain.setValueAtTime(0.2, a.currentTime+1.3);
+  g2.gain.exponentialRampToValueAtTime(0.001, a.currentTime+1.8);
+  o2.start(a.currentTime+1.3); o2.stop(a.currentTime+1.85);
+}
 function playBossDie() {
   const a = getAC(); if (!a) return;
   [330,392,494,659,880].forEach((f,i) => {
@@ -244,23 +274,109 @@ function playBossDie() {
 // ═══════════════════════════════════════════════
 // ROMAJI
 // ═══════════════════════════════════════════════
-function normRoma(s) {
-  return s
-    .replace(/shi/g,'si').replace(/chi/g,'ti').replace(/tsu/g,'tu').replace(/fu/g,'hu')
-    .replace(/sha/g,'sya').replace(/shu/g,'syu').replace(/sho/g,'syo')
-    .replace(/cha/g,'tya').replace(/chu/g,'tyu').replace(/cho/g,'tyo')
-    .replace(/ja/g,'zya').replace(/ji/g,'zi').replace(/ju/g,'zyu').replace(/jo/g,'zyo')
-    .replace(/di/g,'zi').replace(/du/g,'zu').replace(/tchi/g,'tti').replace(/cchi/g,'tti');
+// かな→ローマ字テーブル（ヘボン式・訓令式の両方を許容。先頭がデフォルト表示）
+const KANA_ROMA = {
+  'あ':['a'],'い':['i'],'う':['u'],'え':['e'],'お':['o'],
+  'か':['ka'],'き':['ki'],'く':['ku'],'け':['ke'],'こ':['ko'],
+  'が':['ga'],'ぎ':['gi'],'ぐ':['gu'],'げ':['ge'],'ご':['go'],
+  'さ':['sa'],'し':['shi','si'],'す':['su'],'せ':['se'],'そ':['so'],
+  'ざ':['za'],'じ':['ji','zi'],'ず':['zu'],'ぜ':['ze'],'ぞ':['zo'],
+  'た':['ta'],'ち':['chi','ti'],'つ':['tsu','tu'],'て':['te'],'と':['to'],
+  'だ':['da'],'ぢ':['ji','di'],'づ':['zu','du'],'で':['de'],'ど':['do'],
+  'な':['na'],'に':['ni'],'ぬ':['nu'],'ね':['ne'],'の':['no'],
+  'は':['ha'],'ひ':['hi'],'ふ':['fu','hu'],'へ':['he'],'ほ':['ho'],
+  'ば':['ba'],'び':['bi'],'ぶ':['bu'],'べ':['be'],'ぼ':['bo'],
+  'ぱ':['pa'],'ぴ':['pi'],'ぷ':['pu'],'ぺ':['pe'],'ぽ':['po'],
+  'ま':['ma'],'み':['mi'],'む':['mu'],'め':['me'],'も':['mo'],
+  'や':['ya'],'ゆ':['yu'],'よ':['yo'],
+  'ら':['ra'],'り':['ri'],'る':['ru'],'れ':['re'],'ろ':['ro'],
+  'わ':['wa'],'ゐ':['i'],'ゑ':['e'],'を':['wo','o'],'ん':['nn','n'],
+  'きゃ':['kya'],'きゅ':['kyu'],'きょ':['kyo'],
+  'しゃ':['sha','sya'],'しゅ':['shu','syu'],'しょ':['sho','syo'],
+  'ちゃ':['cha','tya'],'ちゅ':['chu','tyu'],'ちょ':['cho','tyo'],
+  'にゃ':['nya'],'にゅ':['nyu'],'にょ':['nyo'],
+  'ひゃ':['hya'],'ひゅ':['hyu'],'ひょ':['hyo'],
+  'みゃ':['mya'],'みゅ':['myu'],'みょ':['myo'],
+  'りゃ':['rya'],'りゅ':['ryu'],'りょ':['ryo'],
+  'ぎゃ':['gya'],'ぎゅ':['gyu'],'ぎょ':['gyo'],
+  'じゃ':['ja','zya'],'じゅ':['ju','zyu'],'じょ':['jo','zyo'],
+  'びゃ':['bya'],'びゅ':['byu'],'びょ':['byo'],
+  'ぴゃ':['pya'],'ぴゅ':['pyu'],'ぴょ':['pyo'],
+  'ふぁ':['fa'],'ふぃ':['fi'],'ふぇ':['fe'],'ふぉ':['fo'],
+  'うぃ':['wi'],'うぇ':['we'],
+  'ー':['']
+};
+// かなを単位ごとの「許容ローマ字配列」リストに分解（っ＝促音・小書きyouon対応）
+function kanaUnits(kana) {
+  const raw = [];
+  let i = 0;
+  while (i < kana.length) {
+    const two = kana.substr(i, 2);
+    if (KANA_ROMA[two]) { raw.push(two); i += 2; }
+    else { raw.push(kana[i]); i += 1; }
+  }
+  const out = [];
+  let dbl = false;
+  for (const u of raw) {
+    if (u === 'っ') { dbl = true; continue; }
+    let vars = (KANA_ROMA[u] || [u]).slice();
+    if (dbl) {
+      vars = vars.map(v => {
+        const c = v[0];
+        return (/[a-z]/.test(c) && !'aiueo'.includes(c)) ? c + v : v;
+      });
+      dbl = false;
+    }
+    out.push(vars);
+  }
+  return out;
 }
-function romaStartsWith(target, input) {
-  if (!input) return true;
-  return target.startsWith(input) || normRoma(target).startsWith(normRoma(input));
+// 入力がunitsの有効な接頭辞か判定: 'complete' | 'partial' | 'no'
+function kanaMatch(units, input) {
+  function rec(ui, si) {
+    if (si === input.length) return ui === units.length ? 'complete' : 'partial';
+    if (ui === units.length) return 'no';
+    let res = 'no';
+    for (const v of units[ui]) {
+      if (v && input.startsWith(v, si)) {
+        const r = rec(ui + 1, si + v.length);
+        if (r === 'complete') return 'complete';
+        if (r === 'partial') res = 'partial';
+      } else if (v.startsWith(input.slice(si))) {
+        res = 'partial';
+      }
+    }
+    return res;
+  }
+  return rec(0, 0);
 }
-function activeTarget(target, input) {
-  if (!input || target.startsWith(input)) return target;
-  const alt = normRoma(target);
-  if (alt.startsWith(normRoma(input))) return alt;
-  return target;
+// 残り表示用ローマ字を構築（入力に沿った綴りで残りを返す）
+function kanaDisplay(units, input) {
+  function rec(ui, si) {
+    if (si === input.length) {
+      let rem = '';
+      for (let k = ui; k < units.length; k++) rem += units[k][0];
+      return rem;
+    }
+    if (ui === units.length) return null;
+    for (const v of units[ui]) {
+      if (v && input.startsWith(v, si)) {
+        const r = rec(ui + 1, si + v.length);
+        if (r !== null) return r;
+      }
+    }
+    const part = input.slice(si);
+    for (const v of units[ui]) {
+      if (v.startsWith(part)) {
+        let rem = v.slice(part.length);
+        for (let k = ui + 1; k < units.length; k++) rem += units[k][0];
+        return rem;
+      }
+    }
+    return null;
+  }
+  const rem = rec(0, 0);
+  return rem === null ? '' : rem;
 }
 
 // ═══════════════════════════════════════════════
@@ -900,8 +1016,8 @@ function makeUnit(type, side, x) {
   if (type==='archer')    { u.hp=u.maxHp=22*allyHpMult;  u.dmg=15;  u.atkRate=1400; u.range=140; u.speed=0.035; u.meleeRange=38; u.spriteW=12; u.spriteH=18; }
   if (type==='hero')      { u.hp=u.maxHp=9999;            u.dmg=330; u.atkRate=800;  u.range=40;  u.speed=0.055; u.spriteW=12; u.spriteH=18; u.isHero=true; u.drawScale=1.5; }
   if (type==='allydemon') { u.hp=u.maxHp=9999;            u.dmg=120; u.atkRate=1100; u.range=46;  u.speed=0.025; u.spriteW=12; u.spriteH=18; }
-  if (type==='goblin')    { u.hp=u.maxHp=Math.round(80*waveMult);  u.dmg=4;  u.atkRate=1300; u.range=32; u.speed=0.038; u.score=10; u.spriteW=10; u.spriteH=14; }
-  if (type==='hobgoblin') { u.hp=u.maxHp=Math.round(160*waveMult); u.dmg=8;  u.atkRate=1600; u.range=32; u.speed=0.024; u.score=25; u.spriteW=13; u.spriteH=18; }
+  if (type==='goblin')    { u.hp=u.maxHp=Math.round(80*waveMult);  u.dmg=2;  u.atkRate=1300; u.range=32; u.speed=0.038; u.score=10; u.spriteW=10; u.spriteH=14; }
+  if (type==='hobgoblin') { u.hp=u.maxHp=Math.round(160*waveMult); u.dmg=6;  u.atkRate=1600; u.range=32; u.speed=0.024; u.score=25; u.spriteW=13; u.spriteH=18; }
   return u;
 }
 
@@ -954,6 +1070,7 @@ function pickWord() {
 }
 function nextWord() {
   gs.currentWord = pickWord();
+  gs.currentWord.units = kanaUnits(gs.currentWord.k);
   gs.inputValue = '';
   updateWordDisplay();
   const inp = document.getElementById('type-input');
@@ -961,21 +1078,20 @@ function nextWord() {
 }
 function updateWordDisplay(val='') {
   if (!gs.currentWord) return;
-  const tgt = activeTarget(gs.currentWord.r, val || gs.inputValue);
   const done = val || gs.inputValue;
   document.getElementById('word-kana').textContent = gs.currentWord.k;
   document.getElementById('roma-done').textContent = done;
-  document.getElementById('roma-left').textContent = tgt.slice(done.length);
+  document.getElementById('roma-left').textContent = kanaDisplay(gs.currentWord.units, done);
 }
 function updateWordDisplayError(inputVal) {
   if (!gs.currentWord) return;
-  const tgt = activeTarget(gs.currentWord.r, gs.inputValue);
   const wrongChar = inputVal.slice(gs.inputValue.length);
+  const left = kanaDisplay(gs.currentWord.units, gs.inputValue);
   document.getElementById('word-kana').textContent = gs.currentWord.k;
   document.getElementById('roma-done').textContent = gs.inputValue;
   document.getElementById('roma-left').innerHTML =
     `<span style="color:#ff4136;background:#2a0808;border-bottom:2px solid #ff4136">${wrongChar}</span>` +
-    `<span style="color:#445">${tgt.slice(gs.inputValue.length)}</span>`;
+    `<span style="color:#445">${left}</span>`;
 }
 function preventIME(e) {
   if (e.key===' ') e.preventDefault();
@@ -992,15 +1108,16 @@ function handleTyping() {
   const inp = document.getElementById('type-input');
   let val = inp.value.toLowerCase().replace(/[^a-z]/g,'');
   if (!gs.currentWord) { inp.value = val; return; }
-  const target = gs.currentWord.r;
-  if (romaStartsWith(target, val)) {
+  const units = gs.currentWord.units;
+  const status = kanaMatch(units, val);
+  if (status !== 'no') {
     const prev = gs.inputValue;
     gs.inputValue = val;
     inp.value = val;
     inp.classList.remove('wrong');
     updateWordDisplay(val);
     if (val.length > prev.length) playKey();
-    if (val === target || normRoma(val) === normRoma(target)) {
+    if (status === 'complete') {
       playWord();
       gs.effects.push({type:'word', x:CW/2, y:50, timer:700, text:'兵士召喚！', color:'#FFD700'});
       spawnAlly();
@@ -1144,6 +1261,7 @@ function updateUnits(dt) {
     u.animTimer += dt;
     const _fc = IMAGE_DEFS[u.type]?.frames?.length || 2;
     if (u.animTimer > 420) { u.animFrame = (u.animFrame+1)%_fc; u.animTimer = 0; }
+    if (u.lungeT > 0) u.lungeT -= dt;
 
     // Boss special timer
     if (u.isBoss) {
@@ -1169,19 +1287,25 @@ function updateUnits(dt) {
             x2:u.target.x, y2:ty, timer:250, maxT:250});
         } else if (u.type === 'hero') {
           const ax = u.target.x;
-          // 黄色い大閃光エフェクト（1個）
-          gs.effects.push({type:'explosion', x:ax, y:GROUND-70, timer:600, maxT:600, r:140, color:'#ffee00', color2:'#ffaa00'});
-          tone(200, 0.35, 'sine', 0.1, 60);
-          // 聖剣一閃メッセージ（初回のみ）
-          if (!u.senkenUsed) {
-            u.senkenUsed = true;
-            gs.effects.push({type:'msg', x:ax, y:GROUND-150, timer:800, text:'聖剣一閃！', color:'#ffe066', size:22});
-          }
-          // リコイル後退
-          u.x = Math.max(40, u.x - 50);
-          // 魔王戦は攻撃間隔を長くして連続攻撃防止
-          if (u.target.isBoss && u.target.type === 'demonlord') {
-            u.attackTimer = -1800; // 次の攻撃まで2600ms待機（atkRate800+1800）
+          // 突進モーション
+          u.lungeT = 260;
+          // 斬撃アーク＋黄色閃光
+          gs.effects.push({type:'slash', x:ax, y:ty, timer:280, side:u.side});
+          gs.effects.push({type:'explosion', x:ax, y:GROUND-60, timer:450, maxT:450, r:95, color:'#ffee00', color2:'#ffaa00'});
+          tone(680, 0.12, 'square', 0.07, 1100);
+          tone(220, 0.18, 'sawtooth', 0.06, 90);
+          const isDemonFight = u.target.isBoss && u.target.type === 'demonlord';
+          if (isDemonFight) {
+            if (!u.senkenUsed) {
+              // 初回のみ「聖剣一閃！」特大演出
+              u.senkenUsed = true;
+              gs.effects.push({type:'msg', x:ax, y:GROUND-150, timer:900, text:'聖剣一閃！', color:'#ffe066', size:24});
+              gs.effects.push({type:'explosion', x:ax, y:GROUND-70, timer:700, maxT:700, r:170, color:'#ffffff', color2:'#ffdd00'});
+              for (let r=1; r<=3; r++) gs.effects.push({type:'shockwave', x:ax, y:GROUND-20, timer:300+r*120, maxT:300+r*120, r:r*55, color:'#ffe066'});
+              tone(110, 0.5, 'sawtooth', 0.13, 55);
+            }
+            // 約2秒間隔で連続攻撃を抑制（戦いを見せる）
+            u.attackTimer = -1200;
           }
         } else if (u.type === 'allydemon') {
           // 魔王スペシャルと同じ見た目の爆炎攻撃
@@ -1292,26 +1416,14 @@ function triggerBossSpawn() {
   gs.boss = boss;
   gs.waveMsg = {text:`⚠ ${BOSS_DEFS[gs.wave-1].name} 出現！`, timer:2500, color:'#ff4400'};
 
-  // 魔王登場テロップ＋効果音
+  // 魔王登場テロップ＋効果音（敵・Wave4）
   if (boss.type === 'demonlord') {
     gs.effects.push({type:'msg', x:CW/2, y:CH/2-20, timer:3000, text:'魔王が現れた！', color:'#ff2200', size:36});
     gs.effects.push({type:'explosion', x:CW/2, y:GROUND-40, timer:800, maxT:800, r:200, color:'#440000', color2:'#ff2200'});
     for (let r=1; r<=4; r++) {
       gs.effects.push({type:'shockwave', x:CW/2, y:GROUND-20, timer:400+r*150, maxT:400+r*150, r:r*70, color:'#ff2200'});
     }
-    // 不気味な重低音
-    const a = getAC(); if (a) {
-      [55, 73, 49].forEach((f, i) => {
-        const o = a.createOscillator(), g = a.createGain();
-        o.connect(g); g.connect(a.destination);
-        o.type = 'sawtooth'; o.frequency.value = f;
-        g.gain.setValueAtTime(0, a.currentTime + i*0.15);
-        g.gain.linearRampToValueAtTime(0.3, a.currentTime + i*0.15 + 0.1);
-        g.gain.linearRampToValueAtTime(0, a.currentTime + i*0.15 + 1.2);
-        o.start(a.currentTime + i*0.15);
-        o.stop(a.currentTime + i*0.15 + 1.5);
-      });
-    }
+    playDemonBirth();
   }
 
   updateBossBar();
@@ -1417,13 +1529,13 @@ function spawnEnemies(dt) {
     ad.risingTarget = GROUND;
     ad.risingSpeed = 0.12; // px/ms
     gs.units.push(ad);
-    gs.effects.push({type:'msg', x:CW/2, y:CH/2-40, timer:2500, text:'魔王、覚醒！', color:'#aa00ff'});
+    gs.effects.push({type:'msg', x:CW/2, y:CH/2-40, timer:2000, text:'地の底が、揺れる…', color:'#aa00ff'});
   }
 
   // 勇者: Wave4 のみ、1分30秒後に1回だけ出現 (空から落下)
   if (!gs.heroSpawned && gs.wave === 4 && gs.waveTime >= 90000) {
     gs.heroSpawned = true;
-    const hero = makeUnit('hero', 'ally', CW/2);
+    const hero = makeUnit('hero', 'ally', 110); // 味方の城・リスポーン地点付近に降臨
     hero.landingY = -hero.spriteH * S * 1.5;
     hero.landingTarget = GROUND;
     hero.landingSpeed = 0.6;
@@ -1438,27 +1550,27 @@ function updateHeroLanding(dt) {
     if (u.isHero && u.landingY !== undefined) {
       u.landingY += u.landingSpeed * dt;
       if (u.landingY >= u.landingTarget) {
-        // 着地！
-        u.x = 68; // 着地後は通常位置へ
+        // 着地！降臨地点（味方の城付近）でそのまま着地
+        const hx = u.x;
         delete u.landingY;
         delete u.landingTarget;
         delete u.landingSpeed;
-        // 着地爆発エフェクト（画面半分を埋める大爆発）
-        gs.effects.push({type:'explosion', x:CW/2, y:GROUND, timer:1800, maxT:1800, r:380, color:'#ffe066', color2:'#ffd700'});
-        gs.effects.push({type:'explosion', x:CW/2, y:GROUND, timer:1400, maxT:1400, r:260, color:'#ffffff', color2:'#fff0a0'});
-        gs.effects.push({type:'explosion', x:CW/2, y:GROUND, timer:1000, maxT:1000, r:160, color:'#ffe066', color2:'#ff8800'});
+        // 着地爆発エフェクト（大爆発）
+        gs.effects.push({type:'explosion', x:hx, y:GROUND, timer:1800, maxT:1800, r:340, color:'#ffe066', color2:'#ffd700'});
+        gs.effects.push({type:'explosion', x:hx, y:GROUND, timer:1400, maxT:1400, r:240, color:'#ffffff', color2:'#fff0a0'});
+        gs.effects.push({type:'explosion', x:hx, y:GROUND, timer:1000, maxT:1000, r:150, color:'#ffe066', color2:'#ff8800'});
         for (let r=1; r<=6; r++) {
-          gs.effects.push({type:'shockwave', x:CW/2, y:GROUND, timer:600+r*100, maxT:600+r*100, r:r*60, color:'#ffd700'});
+          gs.effects.push({type:'shockwave', x:hx, y:GROUND, timer:600+r*100, maxT:600+r*100, r:r*60, color:'#ffd700'});
         }
         for (let i=0; i<20; i++) {
           const angle = (i/20)*Math.PI*2;
           const spd = 1.5 + Math.random()*2;
-          gs.effects.push({type:'ember', x:CW/2+Math.cos(angle)*20, y:GROUND-20, timer:1200, maxT:1200, color:'#ffd700', vx:Math.cos(angle)*spd, vy:-spd*1.5});
+          gs.effects.push({type:'ember', x:hx+Math.cos(angle)*20, y:GROUND-20, timer:1200, maxT:1200, color:'#ffd700', vx:Math.cos(angle)*spd, vy:-spd*1.5});
         }
-        // ノックバック: 着地衝撃で全ユニット吹き飛ばし
+        // ノックバック: 着地衝撃で前方の味方を少し押し出す
         for (const a of gs.units) {
-          if (a.side === 'ally' && !a.isHero) {
-            a.x = Math.max(80, a.x - 60);
+          if (a.side === 'ally' && !a.isHero && a.x < hx + 120) {
+            a.x = Math.min(CW - 60, a.x + 50);
             if (a.state === 'fight') { a.state = 'walk'; a.target = null; }
           }
         }
@@ -1518,13 +1630,14 @@ function updateAllyDemonRising(dt) {
         delete u.risingY;
         delete u.risingTarget;
         delete u.risingSpeed;
-        // 浮上完了：暗黒爆発
-        gs.effects.push({type:'explosion', x:u.x, y:GROUND, timer:1400, maxT:1400, r:280, color:'#550088', color2:'#220044'});
-        gs.effects.push({type:'explosion', x:u.x, y:GROUND, timer:900,  maxT:900,  r:180, color:'#8800cc', color2:'#440066'});
-        for (let r=1; r<=5; r++) {
-          gs.effects.push({type:'shockwave', x:u.x, y:GROUND, timer:400+r*120, maxT:400+r*120, r:r*55, color:'#aa00ff'});
+        // 浮上完了：暗黒爆発＋「魔王爆誕！」
+        gs.effects.push({type:'explosion', x:u.x, y:GROUND, timer:1400, maxT:1400, r:300, color:'#550088', color2:'#220044'});
+        gs.effects.push({type:'explosion', x:u.x, y:GROUND, timer:900,  maxT:900,  r:190, color:'#8800cc', color2:'#440066'});
+        for (let r=1; r<=6; r++) {
+          gs.effects.push({type:'shockwave', x:u.x, y:GROUND, timer:400+r*120, maxT:400+r*120, r:r*60, color:'#aa00ff'});
         }
-        gs.effects.push({type:'msg', x:CW/2, y:CH/2-60, timer:2200, text:'魔王が神に立ち向かう！', color:'#cc66ff'});
+        gs.effects.push({type:'msg', x:CW/2, y:CH/2-30, timer:3000, text:'魔王爆誕！', color:'#cc66ff', size:40});
+        playDemonBirth();
       }
     }
   }
@@ -1651,6 +1764,21 @@ function drawSpriteBoss(ctx, pixels, ox, oy, flipX=false) {
 }
 
 function drawUnit(u) {
+  // 勇者の突進モーション（攻撃時に前方へthrust）
+  let _lungeOrig = null;
+  if (u.isHero && u.lungeT > 0) {
+    const p = 1 - u.lungeT / 260;
+    const off = Math.sin(p * Math.PI) * 28 * (u.side === 'enemy' ? -1 : 1);
+    _lungeOrig = u.x;
+    u.x = u.x + off;
+  }
+  try {
+    drawUnitInner(u);
+  } finally {
+    if (_lungeOrig !== null) u.x = _lungeOrig;
+  }
+}
+function drawUnitInner(u) {
   // Image sprite (PNG) — try first
   if (imagesReady) {
     const imgDef = IMAGE_DEFS[u.type];
@@ -1832,8 +1960,20 @@ function drawEffects() {
       grad.addColorStop(0, '#ff8800'); grad.addColorStop(0.5, '#cc1100'); grad.addColorStop(1, 'transparent');
       ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
     } else if (e.type === 'bark' || e.type === 'msg' || e.type === 'word') {
-      ctx.fillStyle = e.color || '#FFD700'; ctx.font = 'bold 15px monospace';
-      ctx.fillText(e.text, e.x, e.y - (800 - Math.max(0,e.timer)) * 0.02);
+      const sz = e.size || 15;
+      const yy = e.y - (800 - Math.max(0,e.timer)) * 0.02;
+      ctx.save();
+      ctx.font = `bold ${sz}px sans-serif`;
+      if (e.size) {
+        // 大きいテロップは中央寄せ＋縁取りで目立たせる
+        ctx.textAlign = 'center';
+        ctx.lineWidth = Math.max(3, sz * 0.14);
+        ctx.strokeStyle = '#000';
+        ctx.strokeText(e.text, e.x, yy);
+      }
+      ctx.fillStyle = e.color || '#FFD700';
+      ctx.fillText(e.text, e.x, yy);
+      ctx.restore();
     } else if (e.type === 'spawn') {
       ctx.fillStyle = e.color || '#4dff6e'; ctx.font = '11px monospace';
       ctx.fillText('▲', e.x, e.y);
