@@ -977,7 +977,7 @@ const BOSS_DEFS = [
   {name:'魔女',            type:'witch',     hp:900,  dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:10, spriteH:18, score:250},
   {name:'ポメラニアンの異形', type:'pomeranian',hp:1400, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:14, spriteH:10, score:400},
   {name:'魔王',            type:'demonlord', hp:2000, dmg:24, atkRate:1800, specialRate:7000, speed:0.006, atkRange:85,  spriteW:12, spriteH:18, score:600},
-  {name:'神',              type:'god',       hp:6000, dmg:42, atkRate:140, specialRate:3500, speed:0.018, atkRange:110, spriteW:12, spriteH:20, score:1000},
+  {name:'神',              type:'god',       hp:6000, dmg:42, atkRate:1300, specialRate:5000, speed:0.011, atkRange:110, spriteW:12, spriteH:20, score:1000},
 ];
 const BOSS_FORCE_TIMES = [90000, 90000, 90000, 90000, 90000];
 
@@ -1366,7 +1366,9 @@ function updateUnits(dt) {
 
       // Castle wall: ally dies here; damages castle only after boss is out
       if (u.side === 'ally' && u.x >= 726) {
-        if (gs.bossSpawned) {
+        // Wave5: 神が生きている間は城を壊せない（神討伐がクライマックス）
+        const castleLocked = gs.wave === 5 && gs.boss && gs.boss.type === 'god';
+        if (gs.bossSpawned && !castleLocked) {
           gs.enemyCastleHP = Math.max(0, gs.enemyCastleHP - 40);
           gs.effects.push({type:'hit', x:750, y:GROUND-50, timer:380});
           if (gs.enemyCastleHP <= 0 && gs.state === 'playing') {
@@ -1535,7 +1537,7 @@ function spawnEnemies(dt) {
   if (!gs.allyDemonSpawned && gs.wave >= 5 && gs.waveTime >= 80000) {
     gs.allyDemonSpawned = true;
     const ad = makeUnit('allydemon', 'ally', 200);
-    ad.dmg *= 1400; // Wave5: 攻撃力×1400（今の50倍）
+    ad.dmg *= 3; // Wave5: 神とのデュエル用。即死させず20秒前後の死闘になる数値
     ad.isBossScale = true; // ボスと同じスケールで描画
     ad.risingY = GROUND + ad.spriteH * BS + 20; // 地面の下からスタート
     ad.risingTarget = GROUND;
@@ -1603,15 +1605,15 @@ function updateBossClash(dt) {
   const dist = Math.abs(god.x - demon.x);
   if (dist > 80) return;
 
-  // ノックバック：神が魔王を味方城付近まで叩き返す
-  const kbGod = god.x < demon.x ? -60 : 60;
-  god.x   = Math.max(400, Math.min(CW - 40, god.x + kbGod));
-  demon.x = 120; // 味方城付近まで吹き飛ばす
+  // ノックバック：小さめ。両者がその場で押し合う（城まで飛ばさない）
+  const kbGod   = god.x   < demon.x ? -35 : 35;
+  const kbDemon = demon.x < god.x   ? -35 : 35;
+  god.x   = Math.max(420, Math.min(CW - 40, god.x   + kbGod));
+  demon.x = Math.max(180, Math.min(CW - 40, demon.x + kbDemon));
 
-  // ダメージ
-  const clashDmg = 80;
-  god.hp   = Math.max(1, god.hp   - clashDmg);
-  demon.hp = Math.max(1, demon.hp - clashDmg);
+  // ダメージ：魔王（味方）が押し勝つ → 神に多く入る
+  god.hp   = Math.max(1, god.hp   - 130);
+  demon.hp = Math.max(1, demon.hp - 45);
 
   // エフェクト
   const mx = (god.x + demon.x) / 2;
