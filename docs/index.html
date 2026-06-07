@@ -882,9 +882,9 @@ function drawImageUnit(u, img, drawH, yOff) {
   if (u.type === 'god' && u.risingY === undefined) {
     groundY -= 10 + 8 * Math.sin(Date.now() / 600);
   }
-  // 魔王：地に足をつけたまま威圧的に上下に揺れる（呼吸）
+  // 魔王：空中に浮遊（飛行ビジュアル）。神より低めで重々しく揺れる
   if ((u.type === 'demonlord' || u.type === 'allydemon') && u.risingY === undefined) {
-    groundY -= 3 + 3 * Math.sin(Date.now() / 520);
+    groundY -= 14 + 7 * Math.sin(Date.now() / 560);
   }
   const cx = Math.round(u.x - drawW/2);
   const cy = groundY - drawH + off;
