@@ -101,6 +101,10 @@ body {
 <div id="game-wrapper">
   <div style="position:relative;">
     <canvas id="gameCanvas" width="800" height="370"></canvas>
+    <div id="scoreOverlay" style="position:absolute;top:10px;left:14px;pointer-events:none;font-family:'Arial Black',sans-serif;line-height:1;text-shadow:2px 2px 0 #000,-1px -1px 0 #000;">
+      <div style="font-size:11px;color:#ffe680;letter-spacing:2px;font-weight:bold;">SCORE</div>
+      <div id="scoreBig" style="font-size:34px;color:#FFD700;font-weight:900;transition:transform 0.1s ease-out;transform-origin:left center;">0</div>
+    </div>
     <div id="overlay">
       <h1 style="color:#FFD700;">ソルジャータイピング</h1>
       <p class="sub">タイピングして兵士を召喚し、ボスを倒して５Waveクリアせよ！</p>
@@ -1198,7 +1202,7 @@ function handleTyping() {
 // ═══════════════════════════════════════════════
 function spawnAlly() {
   gs.spawnCount++;
-  const spawnPts = gs.wave * 3; // Wave数に応じて加点（Wave1=3pt〜Wave5=15pt）
+  const spawnPts = 500; // 召喚ごとに+500
   if (gs.allyDemonSpawned && gs.wave >= 5) {
     for (let i = 0; i < 5; i++) {
       const g = makeUnit('goblin', 'ally', 60 + i * 12);
@@ -1445,10 +1449,10 @@ function updateUnits(dt) {
           u.target.state = 'dead';
           if (u.target.side === 'enemy') {
             if (u.target.isBoss) {
-              addScore(u.target.score, u.target.x, GROUND-100);
+              addScore(u.target.score * 10, u.target.x, GROUND-100);
               onBossDead();
             } else {
-              addScore(u.target.score, u.target.x, GROUND-55);
+              addScore(500, u.target.x, GROUND-55);
             }
           }
           u.state = 'walk'; u.target = null;
@@ -1511,7 +1515,7 @@ function updateUnits(dt) {
   // Check boss hp from direct hits
   if (gs.boss && gs.boss.hp <= 0 && gs.boss.state !== 'dead') {
     gs.boss.state = 'dead';
-    addScore(gs.boss.score, gs.boss.x, GROUND-120);
+    addScore(gs.boss.score * 10, gs.boss.x, GROUND-120);
     onBossDead();
   }
 
@@ -1841,14 +1845,24 @@ function updateEnemyCastleHud() {
 
 function addScore(pts, x, y) {
   gs.score += pts;
-  document.getElementById('scoreNum').textContent = gs.score.toLocaleString();
+  const s = gs.score.toLocaleString();
+  document.getElementById('scoreNum').textContent = s;
+  const big = document.getElementById('scoreBig');
+  if (big) {
+    big.textContent = s;
+    big.style.transform = 'scale(1.25)';
+    setTimeout(() => { big.style.transform = 'scale(1)'; }, 120);
+  }
   if (x !== undefined) {
-    gs.effects.push({type:'msg', x, y: y ?? GROUND-55, timer:700, text:`+${pts}`, color:'#FFD700', size:16});
+    gs.effects.push({type:'msg', x, y: y ?? GROUND-55, timer:800, text:`+${pts}`, color:'#FFD700', size:20});
   }
 }
 
 function updateHUD() {
-  document.getElementById('scoreNum').textContent = gs.score.toLocaleString();
+  const s = gs.score.toLocaleString();
+  document.getElementById('scoreNum').textContent = s;
+  const big = document.getElementById('scoreBig');
+  if (big) big.textContent = s;
   const sec = Math.floor(gs.waveTime/1000);
   document.getElementById('timerNum').textContent = `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
   document.getElementById('waveNum').textContent = gs.wave;
@@ -2274,11 +2288,11 @@ function gameLoop(ts) {
 // RANKING SYSTEM
 // ═══════════════════════════════════════════════
 const DUMMY_SCORES = [
-  {name:'うんこ太郎',  score:9850, wave:5},
-  {name:'キーボード侍', score:7200, wave:5},
-  {name:'タイピング王',  score:5500, wave:5},
-  {name:'ゆびさきの魔術師', score:3800, wave:4},
-  {name:'はじめてのタイピング', score:1200, wave:3},
+  {name:'うんこ太郎',  score:128500, wave:5},
+  {name:'キーボード侍', score:96000, wave:5},
+  {name:'タイピング王',  score:72500, wave:5},
+  {name:'ゆびさきの魔術師', score:48000, wave:4},
+  {name:'はじめてのタイピング', score:21000, wave:3},
 ];
 
 function loadRanking() {
@@ -2362,7 +2376,7 @@ function endGame(result) {
   const playerName = getPlayerName() || 'プレイヤー';
 
   if (result === 'win') {
-    const total = gs.score + 1000;
+    const total = gs.score + 10000;
     addToRanking(playerName, total, 5);
     const tweetText = encodeURIComponent(`【ソルジャータイピング】全Wave制覇！スコア: ${total.toLocaleString()}点 ⚔️✨ #ソルジャータイピング #タイピングゲーム`);
     const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
@@ -2370,7 +2384,7 @@ function endGame(result) {
 <h1 style="color:#FFD700;font-size:28px;">🎉 VICTORY! 🎉</h1>
 <p class="sub">神を倒し、世界に平和が戻った！</p>
 <div id="result-score">${total.toLocaleString()} pt</div>
-<p class="sub" style="color:#aaa">撃破: ${gs.score} ＋ 勝利ボーナス: 1000</p>
+<p class="sub" style="color:#aaa">撃破: ${gs.score.toLocaleString()} ＋ 勝利ボーナス: 10,000</p>
 <p class="sub">Wave: 5 クリア！ Time: ${Math.floor(gs.time/60000)}:${String(Math.floor(gs.time/1000)%60).padStart(2,'0')}</p>
 <div style="margin:6px 0 2px;font-size:12px;color:#FFD700;letter-spacing:1px;">― RANKING ―</div>
 ${buildRankingHTML(total)}
