@@ -114,6 +114,11 @@ body {
         SI / SHI どちらでもOK（入力の揺れ許容）<br>
         <span style="color:#aaa">IME（日本語変換）はOFFにしてください</span>
       </div>
+      <div style="margin:10px 0 4px;">
+        <input id="playerNameInput" type="text" maxlength="12" placeholder="名前を入力（12文字まで）"
+          style="padding:8px 12px;font-size:14px;border-radius:6px;border:2px solid #FFD700;background:#111;color:#fff;width:220px;text-align:center;outline:none;"
+          onkeydown="if(event.key==='Enter')startGame()">
+      </div>
       <button class="big-btn" onclick="startGame()">START</button>
       <button class="big-btn" style="margin-top:8px;background:#888;font-size:14px;" onclick="startGame(4)">テスト：Wave 4 から</button>
     </div>
@@ -2206,10 +2211,67 @@ function gameLoop(ts) {
 }
 
 // ═══════════════════════════════════════════════
+// RANKING SYSTEM
+// ═══════════════════════════════════════════════
+const DUMMY_SCORES = [
+  {name:'うんこ太郎',  score:9850, wave:5},
+  {name:'キーボード侍', score:7200, wave:5},
+  {name:'タイピング王',  score:5500, wave:5},
+  {name:'ゆびさきの魔術師', score:3800, wave:4},
+  {name:'はじめてのタイピング', score:1200, wave:3},
+];
+
+function loadRanking() {
+  try { return JSON.parse(localStorage.getItem('soldiertypingRanking') || '[]'); } catch { return []; }
+}
+function saveRanking(entries) {
+  try { localStorage.setItem('soldiertypingRanking', JSON.stringify(entries)); } catch {}
+}
+function addToRanking(name, score, wave) {
+  const entries = loadRanking();
+  entries.push({name, score, wave, date: new Date().toLocaleDateString('ja-JP')});
+  entries.sort((a,b) => b.score - a.score);
+  saveRanking(entries.slice(0, 20));
+}
+function buildRankingHTML(myScore) {
+  const user = loadRanking();
+  const all = [...DUMMY_SCORES, ...user].sort((a,b) => b.score - a.score);
+  const top = all.slice(0, 8);
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0;">
+<tr style="color:#aaa;border-bottom:1px solid #333;"><th style="text-align:left;padding:3px 6px;">#</th><th style="text-align:left;padding:3px 6px;">名前</th><th style="text-align:right;padding:3px 6px;">スコア</th><th style="text-align:right;padding:3px 6px;">到達Wave</th></tr>`;
+  top.forEach((e, i) => {
+    const isMe = e.score === myScore && !DUMMY_SCORES.includes(e);
+    const color = i===0 ? '#FFD700' : i===1 ? '#C0C0C0' : i===2 ? '#CD7F32' : isMe ? '#4dff6e' : '#ccc';
+    const bg = isMe ? 'background:#1a3a1a;' : '';
+    const medal = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : `${i+1}.`;
+    html += `<tr style="${bg}color:${color};">
+<td style="padding:3px 6px;">${medal}</td>
+<td style="padding:3px 6px;">${e.name}${isMe?' ◀ あなた':''}</td>
+<td style="text-align:right;padding:3px 6px;">${e.score.toLocaleString()}</td>
+<td style="text-align:right;padding:3px 6px;">Wave ${e.wave}</td></tr>`;
+  });
+  html += '</table>';
+  return html;
+}
+
+function getPlayerName() {
+  return localStorage.getItem('soldiertypingName') || '';
+}
+function setPlayerName(n) {
+  localStorage.setItem('soldiertypingName', n);
+}
+
+// ═══════════════════════════════════════════════
 // START / END
 // ═══════════════════════════════════════════════
 function startGame(fromWave=1) {
   getAC();
+  // 名前を保存
+  const nameInput = document.getElementById('playerNameInput');
+  if (nameInput) {
+    const n = nameInput.value.trim();
+    if (n) setPlayerName(n);
+  }
   nextId = 0;
   gs = {
     state:'playing', time:0, waveTime:0, wave:fromWave, score:0,
@@ -2236,22 +2298,45 @@ function endGame(result) {
   gs.state = result;
   const ov = document.getElementById('overlay');
   ov.style.display = 'flex';
+
+  const playerName = getPlayerName() || 'プレイヤー';
+
   if (result === 'win') {
     const total = gs.score + 1000;
-    ov.innerHTML = `<h1 style="color:#FFD700;font-size:32px;">🎉 VICTORY! 🎉</h1>
+    addToRanking(playerName, total, 5);
+    const tweetText = encodeURIComponent(`【ソルジャータイピング】全Wave制覇！スコア: ${total.toLocaleString()}点 ⚔️✨ #ソルジャータイピング #タイピングゲーム`);
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
+    ov.innerHTML = `
+<h1 style="color:#FFD700;font-size:28px;">🎉 VICTORY! 🎉</h1>
 <p class="sub">神を倒し、世界に平和が戻った！</p>
-<div id="result-score">Score: ${total}</div>
+<div id="result-score">${total.toLocaleString()} pt</div>
 <p class="sub" style="color:#aaa">撃破: ${gs.score} ＋ 勝利ボーナス: 1000</p>
 <p class="sub">Wave: 5 クリア！ Time: ${Math.floor(gs.time/60000)}:${String(Math.floor(gs.time/1000)%60).padStart(2,'0')}</p>
-<button class="big-btn" onclick="startGame()">もう一度！</button>`;
+<div style="margin:6px 0 2px;font-size:12px;color:#FFD700;letter-spacing:1px;">― RANKING ―</div>
+${buildRankingHTML(total)}
+<a href="${tweetUrl}" target="_blank" rel="noopener"
+  style="display:inline-block;margin:8px 4px 0;padding:10px 22px;background:#1DA1F2;color:#fff;font-size:14px;font-weight:bold;border-radius:8px;text-decoration:none;cursor:pointer;">
+  𝕏 スコアを自慢する
+</a>
+<button class="big-btn" style="margin:8px 0 0;" onclick="startGame()">もう一度！</button>`;
   } else {
     const retryWave = gs.wave;
-    ov.innerHTML = `<h1 style="color:#ff4136">💀 GAME OVER 💀</h1>
+    addToRanking(playerName, gs.score, gs.wave);
+    const tweetText = encodeURIComponent(`【ソルジャータイピング】Wave${gs.wave}まで到達！スコア: ${gs.score.toLocaleString()}点 ⚔️ #ソルジャータイピング #タイピングゲーム`);
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
+    ov.innerHTML = `
+<h1 style="color:#ff4136">💀 GAME OVER 💀</h1>
 <p class="sub">ボスが城に到達した…</p>
-<div id="result-score">Score: ${gs.score}</div>
+<div id="result-score">${gs.score.toLocaleString()} pt</div>
 <p class="sub">到達Wave: ${gs.wave}</p>
-<button class="big-btn" onclick="startGame(${retryWave})">Wave ${retryWave} からリトライ</button>
-<button class="big-btn" style="margin-top:8px;background:#888;font-size:14px;" onclick="startGame(1)">Wave 1 からやり直す</button>`;
+<div style="margin:6px 0 2px;font-size:12px;color:#FFD700;letter-spacing:1px;">― RANKING ―</div>
+${buildRankingHTML(gs.score)}
+<a href="${tweetUrl}" target="_blank" rel="noopener"
+  style="display:inline-block;margin:8px 4px 0;padding:10px 22px;background:#1DA1F2;color:#fff;font-size:14px;font-weight:bold;border-radius:8px;text-decoration:none;cursor:pointer;">
+  𝕏 スコアを自慢する
+</a>
+<button class="big-btn" style="margin:8px 4px 0;" onclick="startGame(${retryWave})">Wave ${retryWave} からリトライ</button>
+<button class="big-btn" style="margin-top:6px;background:#888;font-size:13px;" onclick="startGame(1)">Wave 1 からやり直す</button>`;
   }
 }
 
@@ -2270,6 +2355,9 @@ function endGame(result) {
   drawSprite(ctx, SPRITE_DEMON,   680, GROUND-54, true);
   // Preload images in background
   preloadImages(null);
+  // 保存済みの名前を入力欄に反映
+  const savedName = getPlayerName();
+  if (savedName) { const el = document.getElementById('playerNameInput'); if (el) el.value = savedName; }
 })();
 </script>
 </body>
