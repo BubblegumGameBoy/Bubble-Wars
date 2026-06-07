@@ -977,7 +977,7 @@ const BOSS_DEFS = [
   {name:'魔女',            type:'witch',     hp:900,  dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:10, spriteH:18, score:250},
   {name:'ポメラニアンの異形', type:'pomeranian',hp:1400, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:14, spriteH:10, score:400},
   {name:'魔王',            type:'demonlord', hp:2000, dmg:24, atkRate:1800, specialRate:7000, speed:0.006, atkRange:85,  spriteW:12, spriteH:18, score:600},
-  {name:'神',              type:'god',       hp:6000, dmg:42, atkRate:1300, specialRate:5000, speed:0.011, atkRange:110, spriteW:12, spriteH:20, score:1000},
+  {name:'神',              type:'god',       hp:12000, dmg:42, atkRate:1300, specialRate:5000, speed:0.011, atkRange:110, spriteW:12, spriteH:20, score:1000},
 ];
 const BOSS_FORCE_TIMES = [90000, 90000, 90000, 90000, 90000];
 
@@ -1241,10 +1241,15 @@ function doBossSpecial(boss) {
           setTimeout(() => {
             if (gs.state !== 'playing') return;
             // 斜めビーム（神から地上の標的へ）
-            gs.effects.push({type:'diagBeam', x1:bossX-10, y1:GROUND-160, x2:tx, y2:GROUND, timer:1000, maxT:1000});
-            gs.effects.push({type:'explosion', x:tx, y:GROUND-10, timer:750, maxT:750, r:70, color:'#ffffcc', color2:'#ffee00'});
-            for (let r=1; r<=3; r++) {
-              gs.effects.push({type:'shockwave', x:tx, y:GROUND, timer:300+r*80, maxT:300+r*80, r:r*35, color:'#ffee44'});
+            gs.effects.push({type:'diagBeam', x1:bossX-10, y1:GROUND-200, x2:tx, y2:GROUND, timer:1000, maxT:1000});
+            gs.effects.push({type:'explosion', x:tx, y:GROUND-10, timer:900, maxT:900, r:120, color:'#ffffff', color2:'#ffee00'});
+            gs.effects.push({type:'explosion', x:tx, y:GROUND-10, timer:650, maxT:650, r:70, color:'#ffffcc', color2:'#ffaa00'});
+            for (let r=1; r<=5; r++) {
+              gs.effects.push({type:'shockwave', x:tx, y:GROUND, timer:300+r*80, maxT:300+r*80, r:r*45, color:'#ffee44'});
+            }
+            for (let e=0; e<8; e++) {
+              const ea = Math.random()*Math.PI*2;
+              gs.effects.push({type:'ember', x:tx, y:GROUND-15, timer:700, maxT:700, color:'#ffdd33', vx:Math.cos(ea)*2.5, vy:-Math.abs(Math.sin(ea))*3});
             }
             const unit = gs.units.find(u => u.id === tgt?.id && u.state !== 'dead');
             if (unit) {
@@ -1445,6 +1450,32 @@ function triggerBossSpawn() {
     playDemonBirth();
   }
 
+  // 神・降臨（Wave5）— 派手な天罰演出＋場の兵士を一掃
+  if (boss.type === 'god') {
+    gs.effects.push({type:'msg', x:CW/2, y:CH/2-30, timer:3200, text:'神、降臨', color:'#fff7c0', size:42});
+    // 画面全体を覆う黄金の閃光・衝撃波
+    gs.effects.push({type:'explosion', x:CW/2, y:GROUND-40, timer:1100, maxT:1100, r:CW, color:'#ffffff', color2:'#ffe066'});
+    gs.effects.push({type:'explosion', x:boss.x, y:GROUND-60, timer:900, maxT:900, r:280, color:'#fff7c0', color2:'#ffcc00'});
+    for (let r=1; r<=7; r++) {
+      gs.effects.push({type:'shockwave', x:CW/2, y:GROUND-20, timer:400+r*120, maxT:400+r*120, r:r*70, color:'#ffe066'});
+    }
+    for (let p=0; p<28; p++) {
+      const ang = Math.random()*Math.PI*2;
+      gs.effects.push({type:'divineParticle', x:CW/2+Math.cos(ang)*60, y:GROUND-120+Math.sin(ang)*60, timer:1000, maxT:1000});
+    }
+    // 神の威光：場にいる味方兵士（魔王以外）を一掃。城付近に降臨ビームを落とす
+    for (const a of gs.units) {
+      if (a.side === 'ally' && a.type !== 'allydemon' && a.state !== 'dead') {
+        gs.effects.push({type:'diagBeam', x1:boss.x-10, y1:GROUND-200, x2:a.x, y2:GROUND, timer:700, maxT:700});
+        gs.effects.push({type:'explosion', x:a.x, y:GROUND-10, timer:600, maxT:600, r:55, color:'#ffffcc', color2:'#ffee00'});
+        a.state = 'dead';
+      }
+    }
+    playBossSpawn();
+    tone(110, 0.8, 'sawtooth', 0.14, 70);
+    tone(220, 0.6, 'sine',     0.10, 440);
+  }
+
   updateBossBar();
 }
 
@@ -1542,7 +1573,7 @@ function spawnEnemies(dt) {
   if (!gs.allyDemonSpawned && gs.wave >= 5 && gs.waveTime >= 40000) {
     gs.allyDemonSpawned = true;
     const ad = makeUnit('allydemon', 'ally', 200);
-    ad.dmg *= 3; // Wave5: 神とのデュエル用。即死させず20秒前後の死闘になる数値
+    ad.dmg *= 2; // Wave5: 神との死闘用。一方的にならない数値
     ad.isBossScale = true; // ボスと同じスケールで描画
     ad.risingY = GROUND + ad.spriteH * BS + 20; // 地面の下からスタート
     ad.risingTarget = GROUND;
@@ -1616,9 +1647,9 @@ function updateBossClash(dt) {
   god.x   = Math.max(370, Math.min(560, god.x   + kbGod));
   demon.x = Math.max(180, Math.min(560, demon.x + kbDemon));
 
-  // ダメージ：魔王（味方）が押し勝つ → 神に多く入る
-  god.hp   = Math.max(1, god.hp   - 130);
-  demon.hp = Math.max(1, demon.hp - 45);
+  // ダメージ：互角気味の死闘（魔王がやや押し勝つ）
+  god.hp   = Math.max(1, god.hp   - 120);
+  demon.hp = Math.max(1, demon.hp - 60);
 
   // エフェクト
   const mx = (god.x + demon.x) / 2;
