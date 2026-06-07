@@ -1145,7 +1145,7 @@ function spawnAlly() {
   if (gs.allyDemonSpawned && gs.wave >= 5) {
     // スペシャルモード：一回のタイピングで5体のゴブリン召喚
     for (let i = 0; i < 5; i++) {
-      const g = makeUnit('soldier', 'ally', 60 + i * 12);
+      const g = makeUnit('goblin', 'ally', 60 + i * 12);
       gs.units.push(g);
     }
     gs.effects.push({type:'spawn', x:80, y:GROUND-22, timer:600, color:'#aa44ff'});
@@ -1793,7 +1793,13 @@ function drawUnit(u) {
 function drawUnitInner(u) {
   // Image sprite (PNG) — try first
   if (imagesReady) {
-    const imgDef = IMAGE_DEFS[u.type];
+    let imgDef = IMAGE_DEFS[u.type];
+    // ゴブリン/ホブゴブリンのPNGは「味方ゴブリン」または「Wave4の敵」だけ。
+    // Wave1-3・Wave5の敵ゴブリンはピクセルアートを使う。
+    if ((u.type === 'goblin' || u.type === 'hobgoblin') &&
+        !(u.side === 'ally' || gs.wave === 4)) {
+      imgDef = null;
+    }
     if (imgDef) {
       const frameIdx = u.animFrame % imgDef.frames.length;
       const img = loadedImages[imgDef.frames[frameIdx]];
