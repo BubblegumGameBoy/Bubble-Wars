@@ -877,7 +877,11 @@ function drawImageUnit(u, img, drawH, yOff) {
   const aspect = img.naturalWidth / img.naturalHeight;
   const drawW = Math.round(drawH * aspect);
   const off = yOff || 0;
-  const groundY = u.risingY !== undefined ? u.risingY : (u.landingY !== undefined ? u.landingY : GROUND);
+  let groundY = u.risingY !== undefined ? u.risingY : (u.landingY !== undefined ? u.landingY : GROUND);
+  // 神：ふわふわ浮遊（上下バウンド）で生きている感じを出す
+  if (u.type === 'god' && u.risingY === undefined) {
+    groundY -= 10 + 8 * Math.sin(Date.now() / 600);
+  }
   const cx = Math.round(u.x - drawW/2);
   const cy = groundY - drawH + off;
   ctx.save();
@@ -894,6 +898,15 @@ function drawImageUnit(u, img, drawH, yOff) {
     ctx.fillStyle='#0008'; ctx.fillRect(cx-1,cy-8,drawW+2,5);
     ctx.fillStyle=pct>0.5?'#4dff6e':pct>0.25?'#ffcc00':'#ff4136';
     ctx.fillRect(cx,cy-7,Math.round(drawW*pct),3);
+  }
+  if (u.type === 'god' && u.risingY === undefined) {
+    const cy2 = groundY - drawH*0.5 + off;
+    const pulse = 0.5+0.5*Math.sin(Date.now()/420);
+    ctx.save(); ctx.globalAlpha=0.18+0.12*pulse; ctx.globalCompositeOperation='lighter';
+    const grad=ctx.createRadialGradient(u.x,cy2,0,u.x,cy2,drawH*0.7);
+    grad.addColorStop(0,'#fff7c0'); grad.addColorStop(0.5,'#ffe06688'); grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(u.x,cy2,drawH*0.7,0,Math.PI*2); ctx.fill();
+    ctx.restore();
   }
   if (u.isHero && u.landingY !== undefined) {
     const pulse = 0.5+0.5*Math.sin(Date.now()/80);
