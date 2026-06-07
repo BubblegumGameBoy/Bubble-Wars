@@ -136,7 +136,6 @@ body {
   <div id="hud">
     <div style="font-size:12px;color:#aaa;">Wave <span id="waveNum" style="color:#FFD700">1</span> / 5</div>
     <div class="info-center">
-      <span id="scoreDisp">⭐ <span id="scoreNum" style="color:#FFD700;font-size:16px;font-weight:bold;">0</span></span>
       <span id="timerDisp">⏱ <span id="timerNum">0:00</span></span>
     </div>
     <div style="font-size:12px;color:#aaa;">🏰 敵城 <span id="enemyCastleHpNum" style="color:#ff4444">-</span></div>
@@ -1846,7 +1845,6 @@ function updateEnemyCastleHud() {
 function addScore(pts, x, y) {
   gs.score += pts;
   const s = gs.score.toLocaleString();
-  document.getElementById('scoreNum').textContent = s;
   const big = document.getElementById('scoreBig');
   if (big) {
     big.textContent = s;
@@ -1859,10 +1857,8 @@ function addScore(pts, x, y) {
 }
 
 function updateHUD() {
-  const s = gs.score.toLocaleString();
-  document.getElementById('scoreNum').textContent = s;
   const big = document.getElementById('scoreBig');
-  if (big) big.textContent = s;
+  if (big) big.textContent = gs.score.toLocaleString();
   const sec = Math.floor(gs.waveTime/1000);
   document.getElementById('timerNum').textContent = `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
   document.getElementById('waveNum').textContent = gs.wave;
