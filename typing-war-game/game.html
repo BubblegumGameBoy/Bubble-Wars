@@ -1359,11 +1359,11 @@ function updateUnits(dt) {
       const dir = u.side === 'ally' ? 1 : -1;
       u.x += u.speed * dir * dt;
 
-      // Wave5: 神は戦線（バトルライン）で踏みとどまる。城まで突っ込まず魔王とデュエルする
-      if (u === gs.boss && gs.wave === 5 && u.type === 'god' && u.x < 360) {
-        u.x = 360;
+      // Wave5: 神は x=370〜560 の戦場に固定。城まで突っ込まず、右に詰められすぎない
+      if (u === gs.boss && gs.wave === 5 && u.type === 'god') {
+        if (u.x < 370) u.x = 370;
+        if (u.x > 560) u.x = 560;
       }
-
       // Boss appears when first ally crosses into enemy territory
       if (u.side === 'ally' && u.x >= 560 && !gs.bossSpawned && !gs.boss && gs.state === 'playing') {
         triggerBossSpawn();
@@ -1610,11 +1610,11 @@ function updateBossClash(dt) {
   const dist = Math.abs(god.x - demon.x);
   if (dist > 80) return;
 
-  // ノックバック：小さめ。両者がその場で押し合う（城まで飛ばさない）
-  const kbGod   = god.x   < demon.x ? -35 : 35;
-  const kbDemon = demon.x < god.x   ? -35 : 35;
-  god.x   = Math.max(420, Math.min(CW - 40, god.x   + kbGod));
-  demon.x = Math.max(180, Math.min(CW - 40, demon.x + kbDemon));
+  // ノックバック：互いに押し合い、神は戦場内（370〜560）に収める
+  const kbGod   = god.x   < demon.x ? -30 : 30;
+  const kbDemon = demon.x < god.x   ? -50 : 50;
+  god.x   = Math.max(370, Math.min(560, god.x   + kbGod));
+  demon.x = Math.max(180, Math.min(560, demon.x + kbDemon));
 
   // ダメージ：魔王（味方）が押し勝つ → 神に多く入る
   god.hp   = Math.max(1, god.hp   - 130);
