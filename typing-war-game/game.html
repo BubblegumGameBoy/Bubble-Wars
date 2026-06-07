@@ -132,7 +132,7 @@ body {
   <div id="hud">
     <div style="font-size:12px;color:#aaa;">Wave <span id="waveNum" style="color:#FFD700">1</span> / 5</div>
     <div class="info-center">
-      <span id="scoreDisp">Score: <span id="scoreNum">0</span></span>
+      <span id="scoreDisp">⭐ <span id="scoreNum" style="color:#FFD700;font-size:16px;font-weight:bold;">0</span></span>
       <span id="timerDisp">⏱ <span id="timerNum">0:00</span></span>
     </div>
     <div style="font-size:12px;color:#aaa;">🏰 敵城 <span id="enemyCastleHpNum" style="color:#ff4444">-</span></div>
@@ -1198,18 +1198,20 @@ function handleTyping() {
 // ═══════════════════════════════════════════════
 function spawnAlly() {
   gs.spawnCount++;
+  const spawnPts = gs.wave * 3; // Wave数に応じて加点（Wave1=3pt〜Wave5=15pt）
   if (gs.allyDemonSpawned && gs.wave >= 5) {
-    // スペシャルモード：一回のタイピングで5体のゴブリン召喚
     for (let i = 0; i < 5; i++) {
       const g = makeUnit('goblin', 'ally', 60 + i * 12);
       gs.units.push(g);
     }
     gs.effects.push({type:'spawn', x:80, y:GROUND-22, timer:600, color:'#aa44ff'});
     gs.effects.push({type:'msg', x:140, y:GROUND-60, timer:900, text:'×5！', color:'#cc88ff', size:22});
+    addScore(spawnPts * 5, 80, GROUND-75);
     return;
   }
   gs.units.push(makeUnit('soldier', 'ally', 68));
   gs.effects.push({type:'spawn', x:80, y:GROUND-22, timer:500, color:'#4dff6e'});
+  addScore(spawnPts, 80, GROUND-75);
 }
 
 // ═══════════════════════════════════════════════
@@ -1443,10 +1445,10 @@ function updateUnits(dt) {
           u.target.state = 'dead';
           if (u.target.side === 'enemy') {
             if (u.target.isBoss) {
-              gs.score += u.target.score;
+              addScore(u.target.score, u.target.x, GROUND-100);
               onBossDead();
             } else {
-              gs.score += u.target.score;
+              addScore(u.target.score, u.target.x, GROUND-55);
             }
           }
           u.state = 'walk'; u.target = null;
@@ -1509,7 +1511,7 @@ function updateUnits(dt) {
   // Check boss hp from direct hits
   if (gs.boss && gs.boss.hp <= 0 && gs.boss.state !== 'dead') {
     gs.boss.state = 'dead';
-    gs.score += gs.boss.score;
+    addScore(gs.boss.score, gs.boss.x, GROUND-120);
     onBossDead();
   }
 
@@ -1837,8 +1839,14 @@ function updateEnemyCastleHud() {
                'linear-gradient(90deg,#440000,#880000)';
 }
 
-function updateHUD() {
-  document.getElementById('scoreNum').textContent = gs.score;
+function addScore(pts, x, y) {
+  gs.score += pts;
+  document.getElementById('scoreNum').textContent = gs.score.toLocaleString();
+  if (x !== undefined) {
+    gs.effects.push({type:'msg', x, y: y ?? GROUND-55, timer:700, text:`+${pts}`, color:'#FFD700', size:16});
+  }
+}
+  document.getElementById('scoreNum').textContent = gs.score.toLocaleString();
   const sec = Math.floor(gs.waveTime/1000);
   document.getElementById('timerNum').textContent = `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
   document.getElementById('waveNum').textContent = gs.wave;
