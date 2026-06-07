@@ -851,9 +851,9 @@ const SPRITE_HOBGOBLIN2 = [
 // ═══════════════════════════════════════════════
 const IMAGE_DEFS = {
   soldier:   {frames:['images/soldier_1.png','images/soldier_3.png'], drawH:80,  yOff:17},
-  goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:80,  yOff:27},
-  hobgoblin: {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:80,  yOff:27},
-  hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:110, yOff:23},
+  goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:66,  yOff:17},
+  hobgoblin: {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:66,  yOff:17},
+  hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:90,  yOff:17},
   demonlord: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   allydemon: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   god:       {frames:['images/god_1.png'],                            drawH:180, yOff:30},
@@ -2153,7 +2153,10 @@ function draw() {
   drawEnemyCastle();
   for (const u of gs.units.filter(u=>u.side==='enemy')) drawUnit(u);
   if (gs.boss && gs.boss.state !== 'dead') drawUnit(gs.boss);
-  for (const u of gs.units.filter(u=>u.side==='ally')) drawUnit(u);
+  // 味方を描画。勇者は兵士に隠れないよう最前面（最後）に描く
+  const allies = gs.units.filter(u=>u.side==='ally');
+  for (const u of allies.filter(u=>!u.isHero)) drawUnit(u);
+  for (const u of allies.filter(u=>u.isHero)) drawUnit(u);
   drawEffects();
 }
 
