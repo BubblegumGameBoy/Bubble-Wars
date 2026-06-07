@@ -870,6 +870,8 @@ const IMAGE_DEFS = {
   hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:78,  yOff:7},
   cat:       {frames:['images/cat_boss.png'],                         drawH:76, yOff:13},
   bat:       {frames:['images/bat_boss.png'],                         drawH:76, yOff:13},
+  allycat:   {frames:['images/cat_boss.png'],                         drawH:56, yOff:10},
+  allybat:   {frames:['images/bat_boss.png'],                         drawH:56, yOff:10},
   demonlord: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   allydemon: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   god:       {frames:['images/god_1.png'],                            drawH:180, yOff:30},
@@ -903,7 +905,7 @@ function drawImageUnit(u, img, drawH, yOff) {
     groundY -= 14 + 7 * Math.sin(Date.now() / 560);
   }
   // 猫・蝙蝠ボス：空を飛ぶ浮遊モンスター（ふわふわ大きく揺れる）
-  if ((u.type === 'cat' || u.type === 'bat') && u.risingY === undefined) {
+  if ((u.type === 'cat' || u.type === 'bat' || u.type === 'allycat' || u.type === 'allybat') && u.risingY === undefined) {
     groundY -= 28 + 12 * Math.sin(Date.now() / 480);
   }
   const cx = Math.round(u.x - drawW/2);
@@ -943,11 +945,11 @@ function drawImageUnit(u, img, drawH, yOff) {
     ctx.restore();
   }
   // 猫・蝙蝠：浮遊する魔力オーラ（猫=ピンク／蝙蝠=青）
-  if ((u.type === 'cat' || u.type === 'bat') && u.risingY === undefined) {
+  if ((u.type === 'cat' || u.type === 'bat' || u.type === 'allycat' || u.type === 'allybat') && u.risingY === undefined) {
     const cy2 = groundY - drawH*0.5 + off;
     const pulse = 0.5+0.5*Math.sin(Date.now()/400);
-    const c0 = u.type==='cat' ? '#ff66cc' : '#88bbff';
-    const c1 = u.type==='cat' ? '#aa228888' : '#3366cc88';
+    const c0 = (u.type==='cat'||u.type==='allycat') ? '#ff66cc' : '#88bbff';
+    const c1 = (u.type==='cat'||u.type==='allycat') ? '#aa228888' : '#3366cc88';
     ctx.save(); ctx.globalAlpha=0.14+0.12*pulse; ctx.globalCompositeOperation='lighter';
     const grad=ctx.createRadialGradient(u.x,cy2,0,u.x,cy2,drawH*0.65);
     grad.addColorStop(0,c0); grad.addColorStop(0.5,c1); grad.addColorStop(1,'transparent');
@@ -1078,6 +1080,8 @@ function makeUnit(type, side, x) {
   if (type==='archer')    { u.hp=u.maxHp=22*allyHpMult;  u.dmg=15;  u.atkRate=1400; u.range=140; u.speed=0.035; u.meleeRange=38; u.spriteW=12; u.spriteH=18; }
   if (type==='hero')      { u.hp=u.maxHp=9999;            u.dmg=120; u.atkRate=1200; u.range=40;  u.speed=0.055; u.spriteW=12; u.spriteH=18; u.isHero=true; u.drawScale=1.5; }
   if (type==='allydemon') { u.hp=u.maxHp=9999;            u.dmg=120; u.atkRate=1100; u.range=46;  u.speed=0.025; u.spriteW=12; u.spriteH=18; }
+  if (type==='allycat')   { u.hp=u.maxHp=120;             u.dmg=5;   u.atkRate=1100; u.range=38;  u.speed=0.044; u.spriteW=14; u.spriteH=14; }
+  if (type==='allybat')   { u.hp=u.maxHp=90;              u.dmg=7;   u.atkRate=900;  u.range=36;  u.speed=0.048; u.spriteW=16; u.spriteH=12; }
   if (type==='goblin')    { u.hp=u.maxHp=Math.round(80*waveMult);  u.dmg=2;  u.atkRate=1300; u.range=32; u.speed=0.038; u.score=10; u.spriteW=10; u.spriteH=14; }
   if (type==='hobgoblin') { u.hp=u.maxHp=Math.round(160*waveMult); u.dmg=6;  u.atkRate=1600; u.range=32; u.speed=0.024; u.score=25; u.spriteW=13; u.spriteH=18; }
   return u;
@@ -1203,9 +1207,20 @@ function spawnAlly() {
   gs.spawnCount++;
   const spawnPts = 500; // 召喚ごとに+500
   if (gs.allyDemonSpawned && gs.wave >= 5) {
+    gs.wave5SpecialCount = (gs.wave5SpecialCount || 0) + 1;
+    const spawnSpecial = gs.wave5SpecialCount % 5 === 0;
     for (let i = 0; i < 5; i++) {
       const g = makeUnit('goblin', 'ally', 60 + i * 12);
       gs.units.push(g);
+    }
+    if (spawnSpecial) {
+      const specialType = Math.random() < 0.5 ? 'allycat' : 'allybat';
+      const sp = makeUnit(specialType, 'ally', 40);
+      gs.units.push(sp);
+      const label = specialType === 'allycat' ? '魔猫参上！' : '魔蝙蝠参上！';
+      const color = specialType === 'allycat' ? '#ff88dd' : '#88aaff';
+      gs.effects.push({type:'spawn', x:80, y:GROUND-60, timer:700, color});
+      gs.effects.push({type:'msg', x:160, y:GROUND-80, timer:1100, text:label, color, size:20});
     }
     gs.effects.push({type:'spawn', x:80, y:GROUND-22, timer:600, color:'#aa44ff'});
     gs.effects.push({type:'msg', x:140, y:GROUND-60, timer:900, text:'×5！', color:'#cc88ff', size:22});
