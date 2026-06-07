@@ -859,8 +859,8 @@ const IMAGE_DEFS = {
   goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
   hobgoblin: {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
   hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:78,  yOff:7},
-  cat:       {frames:['images/cat_boss.png'],                         drawH:150, yOff:25},
-  bat:       {frames:['images/bat_boss.png'],                         drawH:150, yOff:25},
+  cat:       {frames:['images/cat_boss.png'],                         drawH:108, yOff:18},
+  bat:       {frames:['images/bat_boss.png'],                         drawH:108, yOff:18},
   demonlord: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   allydemon: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   god:       {frames:['images/god_1.png'],                            drawH:180, yOff:30},
@@ -1249,10 +1249,8 @@ function doBossSpecial(boss) {
         gs.effects.push({type:'shockwave', x:boss.x, y:GROUND-60, timer:500+r*90, maxT:500+r*90, r:r*55, color:'#bbddff'});
       }
       for (const a of allies) {
-        a.hp -= Math.round(boss.dmg*1.0);
-        a.stunTimer = 1100;
-        a.x = Math.max(80, a.x - 40);
-        if (a.state==='fight') { a.state='walk'; a.target=null; }
+        a.hp -= Math.round(boss.dmg*0.4);
+        a.stunTimer = 700;
         if (a.hp <= 0) a.state = 'dead';
       }
       // 甲高い超音波スイープ
