@@ -1256,7 +1256,6 @@ function doBossSpecial(boss) {
       }
       for (const a of allies) {
         a.hp -= Math.round(boss.dmg*0.4);
-        a.stunTimer = 700;
         if (a.hp <= 0) a.state = 'dead';
       }
       // 甲高い超音波スイープ
