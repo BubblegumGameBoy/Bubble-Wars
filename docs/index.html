@@ -977,7 +977,7 @@ const BOSS_DEFS = [
   {name:'魔女',            type:'witch',     hp:900,  dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:10, spriteH:18, score:250},
   {name:'ポメラニアンの異形', type:'pomeranian',hp:1400, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:14, spriteH:10, score:400},
   {name:'魔王',            type:'demonlord', hp:2000, dmg:24, atkRate:1800, specialRate:7000, speed:0.006, atkRange:85,  spriteW:12, spriteH:18, score:600},
-  {name:'神',              type:'god',       hp:6000, dmg:42, atkRate:1400, specialRate:3500, speed:0.018, atkRange:110, spriteW:12, spriteH:20, score:1000},
+  {name:'神',              type:'god',       hp:6000, dmg:42, atkRate:140, specialRate:3500, speed:0.018, atkRange:110, spriteW:12, spriteH:20, score:1000},
 ];
 const BOSS_FORCE_TIMES = [90000, 90000, 90000, 90000, 90000];
 
@@ -1535,7 +1535,7 @@ function spawnEnemies(dt) {
   if (!gs.allyDemonSpawned && gs.wave >= 5 && gs.waveTime >= 80000) {
     gs.allyDemonSpawned = true;
     const ad = makeUnit('allydemon', 'ally', 200);
-    ad.dmg *= 28; // Wave5: 攻撃力×28（基本×7の4倍）
+    ad.dmg *= 1400; // Wave5: 攻撃力×1400（今の50倍）
     ad.isBossScale = true; // ボスと同じスケールで描画
     ad.risingY = GROUND + ad.spriteH * BS + 20; // 地面の下からスタート
     ad.risingTarget = GROUND;
@@ -1603,11 +1603,10 @@ function updateBossClash(dt) {
   const dist = Math.abs(god.x - demon.x);
   if (dist > 80) return;
 
-  // ノックバック
-  const kbGod   = god.x   < demon.x ? -60 : 60;
-  const kbDemon = demon.x < god.x   ? -150 : 150;
-  god.x   = Math.max(400, Math.min(CW - 40, god.x   + kbGod));
-  demon.x = Math.max(40,  Math.min(CW - 40, demon.x + kbDemon));
+  // ノックバック：神が魔王を味方城付近まで叩き返す
+  const kbGod = god.x < demon.x ? -60 : 60;
+  god.x   = Math.max(400, Math.min(CW - 40, god.x + kbGod));
+  demon.x = 120; // 味方城付近まで吹き飛ばす
 
   // ダメージ
   const clashDmg = 80;
