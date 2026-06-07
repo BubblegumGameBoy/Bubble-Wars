@@ -853,7 +853,7 @@ const IMAGE_DEFS = {
   soldier:   {frames:['images/soldier_1.png','images/soldier_3.png'], drawH:80,  yOff:17},
   goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
   hobgoblin: {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
-  hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:90,  yOff:17},
+  hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:78,  yOff:7},
   demonlord: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   allydemon: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   god:       {frames:['images/god_1.png'],                            drawH:180, yOff:30},
@@ -1290,7 +1290,12 @@ function updateUnits(dt) {
     if (u.risingY !== undefined) continue;  // 魔王浮上中は戦闘スキップ
     u.animTimer += dt;
     const _fc = IMAGE_DEFS[u.type]?.frames?.length || 2;
-    if (u.animTimer > 420) { u.animFrame = (u.animFrame+1)%_fc; u.animTimer = 0; }
+    // 勇者は攻撃中（fight）は足が歩いて見えないようアニメを止める
+    if (u.isHero && u.state === 'fight') {
+      u.animFrame = 0;
+    } else if (u.animTimer > 420) {
+      u.animFrame = (u.animFrame+1)%_fc; u.animTimer = 0;
+    }
     if (u.lungeT > 0) u.lungeT -= dt;
 
     // Boss special timer
