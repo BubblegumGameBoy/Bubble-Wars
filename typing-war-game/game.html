@@ -859,6 +859,8 @@ const IMAGE_DEFS = {
   goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
   hobgoblin: {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
   hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:78,  yOff:7},
+  cat:       {frames:['images/cat_boss.png'],                         drawH:150, yOff:25},
+  bat:       {frames:['images/bat_boss.png'],                         drawH:150, yOff:25},
   demonlord: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   allydemon: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   god:       {frames:['images/god_1.png'],                            drawH:180, yOff:30},
@@ -890,6 +892,10 @@ function drawImageUnit(u, img, drawH, yOff) {
   // 魔王：空中に浮遊（飛行ビジュアル）。神より低めで重々しく揺れる
   if ((u.type === 'demonlord' || u.type === 'allydemon') && u.risingY === undefined) {
     groundY -= 14 + 7 * Math.sin(Date.now() / 560);
+  }
+  // 猫・蝙蝠ボス：空を飛ぶ浮遊モンスター（ふわふわ大きく揺れる）
+  if ((u.type === 'cat' || u.type === 'bat') && u.risingY === undefined) {
+    groundY -= 28 + 12 * Math.sin(Date.now() / 480);
   }
   const cx = Math.round(u.x - drawW/2);
   const cy = groundY - drawH + off;
@@ -925,6 +931,18 @@ function drawImageUnit(u, img, drawH, yOff) {
     const grad=ctx.createRadialGradient(u.x,cy2,0,u.x,cy2,drawH*0.7);
     grad.addColorStop(0,'#ff3300'); grad.addColorStop(0.5,'#88000088'); grad.addColorStop(1,'transparent');
     ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(u.x,cy2,drawH*0.7,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // 猫・蝙蝠：浮遊する魔力オーラ（猫=ピンク／蝙蝠=青）
+  if ((u.type === 'cat' || u.type === 'bat') && u.risingY === undefined) {
+    const cy2 = groundY - drawH*0.5 + off;
+    const pulse = 0.5+0.5*Math.sin(Date.now()/400);
+    const c0 = u.type==='cat' ? '#ff66cc' : '#88bbff';
+    const c1 = u.type==='cat' ? '#aa228888' : '#3366cc88';
+    ctx.save(); ctx.globalAlpha=0.14+0.12*pulse; ctx.globalCompositeOperation='lighter';
+    const grad=ctx.createRadialGradient(u.x,cy2,0,u.x,cy2,drawH*0.65);
+    grad.addColorStop(0,c0); grad.addColorStop(0.5,c1); grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(u.x,cy2,drawH*0.65,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
   if (u.isHero && u.landingY !== undefined) {
@@ -1006,8 +1024,8 @@ function enemyCastleMaxHPForWave(wave) {
 // ═══════════════════════════════════════════════
 const BOSS_DEFS = [
   {name:'アメーバ',         type:'amoeba',    hp:500,  dmg:5,  atkRate:1000, specialRate:4000, speed:0.013, atkRange:70,  spriteW:10, spriteH:12, score:100},
-  {name:'魔女',            type:'witch',     hp:900,  dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:10, spriteH:18, score:250},
-  {name:'ポメラニアンの異形', type:'pomeranian',hp:1400, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:14, spriteH:10, score:400},
+  {name:'空飛ぶ魔猫ニャルガ',  type:'cat',       hp:4500, dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:14, spriteH:14, score:250},
+  {name:'夜空の大蝙蝠ヴェル', type:'bat',       hp:7000, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:16, spriteH:12, score:400},
   {name:'魔王',            type:'demonlord', hp:2000, dmg:24, atkRate:1800, specialRate:7000, speed:0.006, atkRange:85,  spriteW:12, spriteH:18, score:600},
   {name:'神',              type:'god',       hp:12000, dmg:42, atkRate:1300, specialRate:5000, speed:0.011, atkRange:110, spriteW:12, spriteH:20, score:1000},
 ];
@@ -1016,8 +1034,8 @@ const BOSS_FORCE_TIMES = [90000, 90000, 90000, 90000, 90000];
 function getBossSprites(type) {
   return {
     amoeba:    [SPRITE_AMOEBA,   SPRITE_AMOEBA2],
-    witch:     [SPRITE_WITCH,    SPRITE_WITCH2],
-    pomeranian:[SPRITE_POME,     SPRITE_POME2],
+    cat:       [SPRITE_WITCH,    SPRITE_WITCH2],
+    bat:       [SPRITE_POME,     SPRITE_POME2],
     demonlord: [SPRITE_DEMON,    SPRITE_DEMON],
     god:       [SPRITE_GOD,      SPRITE_GOD],
   }[type];
@@ -1204,27 +1222,43 @@ function doBossSpecial(boss) {
       }
       break;
     }
-    case 'witch': {
-      // Magic bolt — damages + stuns frontmost ally
-      const front = allies.sort((a,b)=>b.x-a.x)[0];
-      if (front) {
-        gs.effects.push({type:'bolt', x:boss.x, y:GROUND-36, tx:front.x, ty:GROUND-36,
-          timer:900, maxT:900, targetId:front.id, dmg:Math.round(boss.dmg*1.8), stun:1400});
-        gs.effects.push({type:'msg', x:boss.x-20, y:GROUND-90, timer:800, text:'呪え！', color:'#cc88ff'});
-      }
+    case 'cat': {
+      // 魔猫の爪ひっかき — 前方3体に魔法の爪痕＋スタン
+      const targets = allies.slice().sort((a,b)=>b.x-a.x).slice(0,3);
+      gs.effects.push({type:'msg', x:boss.x, y:GROUND-150, timer:1000, text:'シャーッ！', color:'#ff66cc', size:22});
+      targets.forEach((t,i) => {
+        const ty = GROUND - (t.spriteH||14) * S / 2;
+        for (let k=0; k<3; k++) {
+          gs.effects.push({type:'slash', x:t.x+(k-1)*8, y:ty-(k-1)*6, timer:350, side:'enemy'});
+        }
+        gs.effects.push({type:'explosion', x:t.x, y:GROUND-30, timer:450, maxT:450, r:55, color:'#ff99dd', color2:'#cc2288'});
+        t.hp -= Math.round(boss.dmg*1.6);
+        t.stunTimer = 900;
+        if (t.hp <= 0) t.state = 'dead';
+      });
+      // ネコの鳴き声＋ひっかき音
+      tone(900, 0.18, 'sawtooth', 0.08, 1500);
+      tone(1400, 0.12, 'square', 0.05, 600);
+      tone(500, 0.2, 'triangle', 0.06, 1100);
       break;
     }
-    case 'pomeranian': {
-      // Bark — shockwave rings + push
-      for (let r=1; r<=3; r++) {
-        gs.effects.push({type:'shockwave', x:boss.x, y:GROUND-20, timer:600+r*100, maxT:600+r*100, r:r*50, color:'#ffdd99'});
+    case 'bat': {
+      // 大蝙蝠の超音波 — 画面を貫く音波リング＋全体ダメージ＆スタン
+      gs.effects.push({type:'msg', x:boss.x, y:GROUND-150, timer:1000, text:'キィィィン！', color:'#aaccff', size:22});
+      for (let r=1; r<=5; r++) {
+        gs.effects.push({type:'shockwave', x:boss.x, y:GROUND-60, timer:500+r*90, maxT:500+r*90, r:r*55, color:'#bbddff'});
       }
-      gs.effects.push({type:'msg', x:boss.x, y:GROUND-110, timer:900, text:'ワンワン!!', color:'#ffdd99'});
       for (const a of allies) {
-        a.x = Math.max(80, a.x - 80);
+        a.hp -= Math.round(boss.dmg*1.0);
+        a.stunTimer = 1100;
+        a.x = Math.max(80, a.x - 40);
         if (a.state==='fight') { a.state='walk'; a.target=null; }
+        if (a.hp <= 0) a.state = 'dead';
       }
-      tone(180, 0.35, 'sawtooth', 0.09, 90);
+      // 甲高い超音波スイープ
+      tone(2200, 0.35, 'sine', 0.07, 700);
+      tone(1700, 0.3, 'sine', 0.06, 900);
+      tone(140, 0.25, 'sawtooth', 0.05, 80);
       break;
     }
     case 'demonlord': {
@@ -1386,6 +1420,19 @@ function updateUnits(dt) {
           gs.effects.push({type:'diagBeam', x1:u.x, y1:GROUND-160, x2:ax, y2:GROUND-30, timer:400, maxT:400});
           for (let r=1; r<=3; r++) gs.effects.push({type:'shockwave', x:ax, y:GROUND-20, timer:200+r*80, maxT:200+r*80, r:r*38, color:'#ffee44'});
           tone(220, 0.3, 'sine', 0.09, 280);
+        } else if (u.isBoss && u.type === 'cat') {
+          // 魔猫の通常攻撃：爪のひっかき（2連スラッシュ）
+          const ax = u.target.x;
+          gs.effects.push({type:'slash', x:ax, y:ty, timer:260, side:'enemy'});
+          gs.effects.push({type:'slash', x:ax+6, y:ty-8, timer:260, side:'enemy'});
+          gs.effects.push({type:'explosion', x:ax, y:GROUND-25, timer:300, maxT:300, r:35, color:'#ff99dd', color2:'#cc2288'});
+          tone(760, 0.12, 'sawtooth', 0.06, 1300);
+        } else if (u.isBoss && u.type === 'bat') {
+          // 大蝙蝠の通常攻撃：急降下の体当たり＋小音波
+          const ax = u.target.x;
+          gs.effects.push({type:'slash', x:ax, y:ty, timer:240, side:'enemy'});
+          for (let r=1; r<=2; r++) gs.effects.push({type:'shockwave', x:ax, y:GROUND-40, timer:200+r*70, maxT:200+r*70, r:r*28, color:'#bbddff'});
+          tone(1600, 0.1, 'sine', 0.05, 600);
         } else {
           gs.effects.push({type:'slash', x:u.target.x, y:ty, timer:280, side:u.side});
         }
