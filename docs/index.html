@@ -850,6 +850,8 @@ const SPRITE_HOBGOBLIN2 = [
 // ═══════════════════════════════════════════════
 const IMAGE_DEFS = {
   soldier:   {frames:['images/soldier_1.png','images/soldier_3.png'], drawH:80,  yOff:17},
+  goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:80,  yOff:17},
+  hobgoblin: {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:80,  yOff:17},
   hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:110, yOff:23},
   demonlord: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
   allydemon: {frames:['images/demonlord_1.png'],                      drawH:160, yOff:25},
@@ -974,7 +976,7 @@ const BOSS_DEFS = [
   {name:'魔女',            type:'witch',     hp:900,  dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:10, spriteH:18, score:250},
   {name:'ポメラニアンの異形', type:'pomeranian',hp:1400, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:14, spriteH:10, score:400},
   {name:'魔王',            type:'demonlord', hp:2000, dmg:24, atkRate:1800, specialRate:7000, speed:0.006, atkRange:85,  spriteW:12, spriteH:18, score:600},
-  {name:'神',              type:'god',       hp:6000, dmg:42, atkRate:1400, specialRate:3500, speed:0.009, atkRange:110, spriteW:12, spriteH:20, score:1000},
+  {name:'神',              type:'god',       hp:6000, dmg:42, atkRate:1400, specialRate:3500, speed:0.018, atkRange:110, spriteW:12, spriteH:20, score:1000},
 ];
 const BOSS_FORCE_TIMES = [90000, 90000, 90000, 90000, 90000];
 
@@ -1139,8 +1141,17 @@ function handleTyping() {
 // ═══════════════════════════════════════════════
 function spawnAlly() {
   gs.spawnCount++;
-  const type = 'soldier';
-  gs.units.push(makeUnit(type, 'ally', 68));
+  if (gs.allyDemonSpawned && gs.wave >= 5) {
+    // スペシャルモード：一回のタイピングで5体のゴブリン召喚
+    for (let i = 0; i < 5; i++) {
+      const g = makeUnit('goblin', 'ally', 60 + i * 12);
+      gs.units.push(g);
+    }
+    gs.effects.push({type:'spawn', x:80, y:GROUND-22, timer:600, color:'#aa44ff'});
+    gs.effects.push({type:'msg', x:140, y:GROUND-60, timer:900, text:'×5！', color:'#cc88ff', size:22});
+    return;
+  }
+  gs.units.push(makeUnit('soldier', 'ally', 68));
   gs.effects.push({type:'spawn', x:80, y:GROUND-22, timer:500, color:'#4dff6e'});
 }
 
@@ -1593,7 +1604,7 @@ function updateBossClash(dt) {
 
   // ノックバック
   const kbGod   = god.x   < demon.x ? -60 : 60;
-  const kbDemon = demon.x < god.x   ? -60 : 60;
+  const kbDemon = demon.x < god.x   ? -150 : 150;
   god.x   = Math.max(400, Math.min(CW - 40, god.x   + kbGod));
   demon.x = Math.max(40,  Math.min(CW - 40, demon.x + kbDemon));
 
