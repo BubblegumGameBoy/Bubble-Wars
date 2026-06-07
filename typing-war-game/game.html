@@ -1359,6 +1359,11 @@ function updateUnits(dt) {
       const dir = u.side === 'ally' ? 1 : -1;
       u.x += u.speed * dir * dt;
 
+      // Wave5: 神は戦線（バトルライン）で踏みとどまる。城まで突っ込まず魔王とデュエルする
+      if (u === gs.boss && gs.wave === 5 && u.type === 'god' && u.x < 360) {
+        u.x = 360;
+      }
+
       // Boss appears when first ally crosses into enemy territory
       if (u.side === 'ally' && u.x >= 560 && !gs.bossSpawned && !gs.boss && gs.state === 'playing') {
         triggerBossSpawn();
@@ -1534,7 +1539,7 @@ function spawnEnemies(dt) {
   }
 
   // Wave5: 開始20秒で味方魔王出現（ボスサイズ・下から浮上）
-  if (!gs.allyDemonSpawned && gs.wave >= 5 && gs.waveTime >= 80000) {
+  if (!gs.allyDemonSpawned && gs.wave >= 5 && gs.waveTime >= 40000) {
     gs.allyDemonSpawned = true;
     const ad = makeUnit('allydemon', 'ally', 200);
     ad.dmg *= 3; // Wave5: 神とのデュエル用。即死させず20秒前後の死闘になる数値
