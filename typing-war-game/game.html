@@ -151,6 +151,33 @@ body {
   </div>
 </div>
 
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBhMkq24FzmHjnJu0OQ7SeQgEV__eY9iGo",
+  authDomain: "bubble-wars-ffcd4.firebaseapp.com",
+  projectId: "bubble-wars-ffcd4",
+  storageBucket: "bubble-wars-ffcd4.firebasestorage.app",
+  messagingSenderId: "465836224399",
+  appId: "1:465836224399:web:8852c314794cfc69a025fa"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window._submitScore = async function(name, score, wave) {
+  try {
+    await addDoc(collection(db, 'scores'), {
+      name, score, wave,
+      date: new Date().toLocaleDateString('ja-JP'),
+      timestamp: serverTimestamp()
+    });
+  } catch(e) { console.warn('score submit failed', e); }
+};
+</script>
+
 <script>
 // ═══════════════════════════════════════════════
 // AUDIO
@@ -2384,6 +2411,7 @@ function endGame(result) {
   if (result === 'win') {
     const total = gs.score + 10000;
     addToRanking(playerName, total, 5);
+    if (window._submitScore) window._submitScore(playerName, total, 5);
     const tweetText = encodeURIComponent(`【ソルジャータイピング】全Wave制覇！スコア: ${total.toLocaleString()}点 ⚔️✨ #ソルジャータイピング #タイピングゲーム`);
     const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
     ov.innerHTML = `
@@ -2402,6 +2430,7 @@ ${buildRankingHTML(total)}
   } else {
     const retryWave = gs.wave;
     addToRanking(playerName, gs.score, gs.wave);
+    if (window._submitScore) window._submitScore(playerName, gs.score, gs.wave);
     const tweetText = encodeURIComponent(`【ソルジャータイピング】Wave${gs.wave}まで到達！スコア: ${gs.score.toLocaleString()}点 ⚔️ #ソルジャータイピング #タイピングゲーム`);
     const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
     ov.innerHTML = `
