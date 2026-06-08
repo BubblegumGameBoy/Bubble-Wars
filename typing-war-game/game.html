@@ -233,17 +233,17 @@ function applySeSettings() {
 // ═══════════════════════════════════════════════
 const BGM_FILES = {
   wave1:  'audio/wave1.mp3',
-  normal: 'audio/normal.mp3',
-  boss2:  'audio/wave2_boss.mp3',
-  boss3:  'audio/wave3_boss.mp3',
-  boss5:  'audio/wave5_boss.mp3',
-  demon:  'audio/demon.mp3',
-  hero:   'audio/hero.mp3',
+  normal: 'audio/Wave2-4 - Normal song.mp3',
+  boss2:  'audio/Wave2 - BOSS FIGHT.mp3',
+  boss3:  'audio/Wave3 - Boss fight.mp3',
+  boss5:  'audio/Wave5 -Boss fight.mp3',
+  demon:  'audio/Overload_Ratio_3.mp3',
+  hero:   'audio/Wave4 - 勇者誕生.mp3',
 };
 const _bgmEls = {};
 function _getBgmEl(key) {
   if (!_bgmEls[key]) {
-    const el = new Audio(BGM_FILES[key]);
+    const el = new Audio(encodeURI(BGM_FILES[key]));
     el.preload = 'auto';
     el.loop = true;
     el.volume = 0;
