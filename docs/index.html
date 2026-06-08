@@ -105,6 +105,22 @@ body {
       <div style="font-size:11px;color:#ffe680;letter-spacing:2px;font-weight:bold;">SCORE</div>
       <div id="scoreBig" style="font-size:34px;color:#FFD700;font-weight:900;transition:transform 0.1s ease-out;transform-origin:left center;">0</div>
     </div>
+    <!-- 音声設定ボタン -->
+    <button id="audioBtn" onclick="toggleAudioPanel()" title="音声設定"
+      style="position:absolute;top:10px;right:12px;z-index:15;width:36px;height:36px;border:none;border-radius:50%;background:rgba(20,20,40,0.8);color:#FFD700;font-size:18px;cursor:pointer;line-height:1;">&#9881;</button>
+    <div id="audioPanel" style="display:none;position:absolute;top:52px;right:12px;z-index:16;width:210px;background:rgba(12,12,28,0.96);border:2px solid #445;border-radius:10px;padding:14px;font-family:'Courier New',monospace;color:#eee;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,0.5);">
+      <div style="font-weight:bold;color:#FFD700;margin-bottom:10px;letter-spacing:1px;">♪ 音声設定</div>
+      <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer;">
+        <span>BGM</span>
+        <input type="checkbox" id="bgmToggle" onchange="onBgmToggle(this.checked)" style="width:18px;height:18px;cursor:pointer;">
+      </label>
+      <input type="range" id="bgmVolSlider" min="0" max="100" oninput="onBgmVol(this.value)" style="width:100%;margin-bottom:14px;cursor:pointer;">
+      <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer;">
+        <span>効果音 (SE)</span>
+        <input type="checkbox" id="seToggle" onchange="onSeToggle(this.checked)" style="width:18px;height:18px;cursor:pointer;">
+      </label>
+      <input type="range" id="seVolSlider" min="0" max="100" oninput="onSeVol(this.value)" style="width:100%;cursor:pointer;">
+    </div>
     <div id="overlay">
       <h1 style="color:#FFD700;">ソルジャータイピング</h1>
       <p class="sub">タイピングして兵士を召喚し、ボスを倒して５Waveクリアせよ！</p>
@@ -183,14 +199,162 @@ window._submitScore = async function(name, score, wave) {
 // AUDIO
 // ═══════════════════════════════════════════════
 let _ac = null;
+let _seGain = null;
 function getAC() {
-  if (!_ac) try { _ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  if (!_ac) {
+    try {
+      _ac = new (window.AudioContext || window.webkitAudioContext)();
+      _seGain = _ac.createGain();
+      _seGain.gain.value = audioSettings.seOn ? audioSettings.seVol : 0;
+      _seGain.connect(_ac.destination);
+    } catch(e){}
+  }
   return _ac;
+}
+function seOut() { getAC(); return _seGain || _ac.destination; }
+
+// ── 音声設定（localStorage 永続化） ──
+const audioSettings = (() => {
+  const def = { bgmOn: true, seOn: true, bgmVol: 0.5, seVol: 0.7 };
+  try {
+    const s = JSON.parse(localStorage.getItem('soldiertypingAudio') || '{}');
+    return Object.assign(def, s);
+  } catch { return def; }
+})();
+function saveAudioSettings() {
+  try { localStorage.setItem('soldiertypingAudio', JSON.stringify(audioSettings)); } catch {}
+}
+function applySeSettings() {
+  if (_seGain) _seGain.gain.value = audioSettings.seOn ? audioSettings.seVol : 0;
+}
+
+// ═══════════════════════════════════════════════
+// BGM マネージャ（フェードイン／アウト付き）
+// ═══════════════════════════════════════════════
+const BGM_FILES = {
+  wave1:  'audio/wave1.mp3',
+  normal: 'audio/normal.mp3',
+  boss2:  'audio/wave2_boss.mp3',
+  boss3:  'audio/wave3_boss.mp3',
+  boss5:  'audio/wave5_boss.mp3',
+  demon:  'audio/demon.mp3',
+  hero:   'audio/hero.mp3',
+};
+const _bgmEls = {};
+function _getBgmEl(key) {
+  if (!_bgmEls[key]) {
+    const el = new Audio(BGM_FILES[key]);
+    el.preload = 'auto';
+    el.loop = true;
+    el.volume = 0;
+    _bgmEls[key] = el;
+  }
+  return _bgmEls[key];
+}
+let _bgmCurrent = null;       // 現在再生中のキー
+let _bgmFadeTimers = {};
+function _fade(el, from, to, ms, after) {
+  const key = el.src;
+  if (_bgmFadeTimers[key]) clearInterval(_bgmFadeTimers[key]);
+  const steps = Math.max(1, Math.round(ms / 50));
+  let i = 0;
+  el.volume = Math.max(0, Math.min(1, from));
+  _bgmFadeTimers[key] = setInterval(() => {
+    i++;
+    const t = i / steps;
+    el.volume = Math.max(0, Math.min(1, from + (to - from) * t));
+    if (i >= steps) {
+      clearInterval(_bgmFadeTimers[key]);
+      _bgmFadeTimers[key] = null;
+      if (after) after();
+    }
+  }, 50);
+}
+// key を再生。fadeMs でクロスフェード。loop=false なら再生終了時 onEnd を呼ぶ
+function playBGM(key, opts = {}) {
+  const { fadeMs = 2000, loop = true, onEnd = null, restart = true } = opts;
+  if (!audioSettings.bgmOn) { _bgmCurrent = key; return; }
+  const target = audioSettings.bgmVol;
+  // 現在の曲をフェードアウト＆停止
+  const prevKey = _bgmCurrent;
+  if (prevKey && prevKey !== key) {
+    const prev = _getBgmEl(prevKey);
+    _fade(prev, prev.volume, 0, fadeMs, () => { try { prev.pause(); } catch{} });
+  }
+  _bgmCurrent = key;
+  const el = _getBgmEl(key);
+  el.loop = loop;
+  el.onended = null;
+  if (!loop && onEnd) {
+    el.onended = () => { onEnd(); };
+  }
+  if (restart || el.paused) { try { el.currentTime = 0; } catch{} }
+  const p = el.play();
+  if (p && p.catch) p.catch(()=>{});
+  _fade(el, prevKey === key ? el.volume : 0, target, fadeMs);
+}
+function stopBGM(fadeMs = 1500) {
+  if (!_bgmCurrent) return;
+  const el = _getBgmEl(_bgmCurrent);
+  _fade(el, el.volume, 0, fadeMs, () => { try { el.pause(); } catch{} });
+  _bgmCurrent = null;
+}
+function applyBgmVolume() {
+  if (_bgmCurrent && audioSettings.bgmOn) {
+    const el = _getBgmEl(_bgmCurrent);
+    el.volume = audioSettings.bgmVol;
+  }
+}
+function setBgmEnabled(on) {
+  audioSettings.bgmOn = on;
+  if (!on) {
+    Object.values(_bgmEls).forEach(el => { try { el.pause(); } catch{} });
+  } else if (_bgmCurrent) {
+    const key = _bgmCurrent;
+    _bgmCurrent = null;
+    playBGM(key, { fadeMs: 800, restart: false });
+  }
+  saveAudioSettings();
+}
+
+// ── 設定パネル UI 制御 ──
+function toggleAudioPanel() {
+  const p = document.getElementById('audioPanel');
+  const open = p.style.display === 'none' || !p.style.display;
+  p.style.display = open ? 'block' : 'none';
+  if (open) syncAudioPanel();
+}
+function syncAudioPanel() {
+  const bt = document.getElementById('bgmToggle');
+  const st = document.getElementById('seToggle');
+  const bv = document.getElementById('bgmVolSlider');
+  const sv = document.getElementById('seVolSlider');
+  if (bt) bt.checked = audioSettings.bgmOn;
+  if (st) st.checked = audioSettings.seOn;
+  if (bv) bv.value = Math.round(audioSettings.bgmVol * 100);
+  if (sv) sv.value = Math.round(audioSettings.seVol * 100);
+}
+function onBgmToggle(on) { setBgmEnabled(on); }
+function onSeToggle(on) {
+  audioSettings.seOn = on;
+  applySeSettings();
+  saveAudioSettings();
+  if (on) tone(880, 0.08, 'sine', 0.06); // テスト音
+}
+function onBgmVol(v) {
+  audioSettings.bgmVol = v / 100;
+  applyBgmVolume();
+  saveAudioSettings();
+}
+function onSeVol(v) {
+  audioSettings.seVol = v / 100;
+  applySeSettings();
+  saveAudioSettings();
 }
 function tone(freq, dur, type='sine', vol=0.07, freqEnd=null) {
   const a = getAC(); if (!a) return;
   const o = a.createOscillator(), g = a.createGain();
-  o.connect(g); g.connect(a.destination);
+  o.connect(g); g.connect(seOut());
   o.type = type; o.frequency.value = freq;
   if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, a.currentTime + dur * 0.8);
   g.gain.setValueAtTime(vol, a.currentTime);
@@ -201,7 +365,7 @@ function playKey()   { tone(750 + Math.random()*150, 0.07, 'sine', 0.06, 1050 + 
 function playWord()  {
   const a = getAC(); if (!a) return;
   [523,659,784,1047].forEach((f,i) => {
-    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(a.destination);
+    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(seOut());
     o.type='sine'; o.frequency.value=f;
     const t=a.currentTime+i*0.06;
     g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.28);
@@ -212,7 +376,7 @@ function playWrong() { tone(220, 0.08, 'square', 0.04, 160); }
 function playWave()  {
   const a = getAC(); if (!a) return;
   [392,494,587].forEach((f,i) => {
-    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(a.destination);
+    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(seOut());
     o.type='sawtooth'; o.frequency.value=f;
     const t=a.currentTime+i*0.1;
     g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
@@ -230,7 +394,7 @@ function playHeroFanfare() {
   ];
   notes.forEach(([freq, delay]) => {
     const o=a.createOscillator(),g=a.createGain();
-    o.connect(g); g.connect(a.destination);
+    o.connect(g); g.connect(seOut());
     o.type='square'; o.frequency.value=freq;
     const t=a.currentTime+delay;
     g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
@@ -239,7 +403,7 @@ function playHeroFanfare() {
   // 和音ベース
   [[131,0.00],[165,0.70],[196,1.45],[131,2.20]].forEach(([freq,delay]) => {
     const o=a.createOscillator(),g=a.createGain();
-    o.connect(g); g.connect(a.destination);
+    o.connect(g); g.connect(seOut());
     o.type='sine'; o.frequency.value=freq;
     const t=a.currentTime+delay;
     g.gain.setValueAtTime(0.07,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.45);
@@ -248,7 +412,7 @@ function playHeroFanfare() {
   // ドラムロール（着地衝撃）
   [0.00,0.03,0.06,0.09,0.12,0.80,0.83,0.86,1.45,1.48].forEach(delay => {
     const o=a.createOscillator(),g=a.createGain();
-    o.connect(g); g.connect(a.destination);
+    o.connect(g); g.connect(seOut());
     o.type='sawtooth'; o.frequency.value=80;
     const t=a.currentTime+delay;
     g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
@@ -258,7 +422,7 @@ function playHeroFanfare() {
 function playBossSpawn() {
   const a = getAC(); if (!a) return;
   [220,196,165,147].forEach((f,i) => {
-    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(a.destination);
+    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(seOut());
     o.type='sawtooth'; o.frequency.value=f;
     const t=a.currentTime+i*0.12;
     g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.35);
@@ -269,7 +433,7 @@ function playDemonBirth() {
   const a = getAC(); if (!a) return;
   // 地響き（上昇する重低音スイープ）
   const o1 = a.createOscillator(), g1 = a.createGain();
-  o1.connect(g1); g1.connect(a.destination);
+  o1.connect(g1); g1.connect(seOut());
   o1.type = 'sawtooth';
   o1.frequency.setValueAtTime(35, a.currentTime);
   o1.frequency.exponentialRampToValueAtTime(110, a.currentTime + 1.4);
@@ -280,7 +444,7 @@ function playDemonBirth() {
   // 不気味な金属的ヒット
   [[110,0.0],[146,0.45],[110,0.9],[73,1.35]].forEach(([f,d]) => {
     const o=a.createOscillator(), g=a.createGain();
-    o.connect(g); g.connect(a.destination);
+    o.connect(g); g.connect(seOut());
     o.type='square'; o.frequency.value=f;
     const t=a.currentTime+d;
     g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
@@ -288,7 +452,7 @@ function playDemonBirth() {
   });
   // 爆誕インパクト
   const o2=a.createOscillator(), g2=a.createGain();
-  o2.connect(g2); g2.connect(a.destination);
+  o2.connect(g2); g2.connect(seOut());
   o2.type='sawtooth'; o2.frequency.setValueAtTime(180, a.currentTime+1.3);
   o2.frequency.exponentialRampToValueAtTime(40, a.currentTime+1.7);
   g2.gain.setValueAtTime(0.2, a.currentTime+1.3);
@@ -298,7 +462,7 @@ function playDemonBirth() {
 function playBossDie() {
   const a = getAC(); if (!a) return;
   [330,392,494,659,880].forEach((f,i) => {
-    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(a.destination);
+    const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(seOut());
     o.type='sine'; o.frequency.value=f;
     const t=a.currentTime+i*0.09;
     g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.35);
@@ -1055,10 +1219,10 @@ function enemyCastleMaxHPForWave(wave) {
 // ═══════════════════════════════════════════════
 const BOSS_DEFS = [
   {name:'アメーバ',         type:'amoeba',    hp:500,  dmg:5,  atkRate:1000, specialRate:4000, speed:0.013, atkRange:70,  spriteW:10, spriteH:12, score:100},
-  {name:'空飛ぶ魔猫ニャルガ',  type:'cat',       hp:4500, dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:14, spriteH:14, score:250},
-  {name:'夜空の大蝙蝠ヴェル', type:'bat',       hp:4000, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:16, spriteH:12, score:400},
-  {name:'魔王',            type:'demonlord', hp:2000, dmg:24, atkRate:1800, specialRate:7000, speed:0.006, atkRange:85,  spriteW:12, spriteH:18, score:600},
-  {name:'神',              type:'god',       hp:12000, dmg:42, atkRate:1300, specialRate:5000, speed:0.011, atkRange:110, spriteW:12, spriteH:20, score:1000},
+  {name:'空飛ぶ魔猫ニャルガ',  type:'cat',       hp:3600, dmg:8,  atkRate:1300, specialRate:4500, speed:0.012, atkRange:80,  spriteW:14, spriteH:14, score:250},
+  {name:'夜空の大蝙蝠ヴェル', type:'bat',       hp:3200, dmg:12, atkRate:900,  specialRate:3500, speed:0.015, atkRange:75,  spriteW:16, spriteH:12, score:400},
+  {name:'魔王',            type:'demonlord', hp:1600, dmg:24, atkRate:1800, specialRate:7000, speed:0.006, atkRange:85,  spriteW:12, spriteH:18, score:600},
+  {name:'神',              type:'god',       hp:9600, dmg:42, atkRate:1300, specialRate:5000, speed:0.011, atkRange:110, spriteW:12, spriteH:20, score:1000},
 ];
 const BOSS_FORCE_TIMES = [90000, 90000, 90000, 90000, 90000];
 
@@ -1576,6 +1740,13 @@ function triggerBossSpawn() {
   gs.boss = boss;
   gs.waveMsg = {text:`⚠ ${BOSS_DEFS[gs.wave-1].name} 出現！`, timer:2500, color:'#ff4400'};
 
+  // ボス BGM：WARNING → 通常曲フェードアウト → 約0.5秒の間 → ボス曲
+  const bossBgmKey = {cat:'boss2', bat:'boss3', demonlord:'demon', god:'boss5'}[boss.type];
+  if (bossBgmKey) {
+    stopBGM(1300);
+    setTimeout(() => playBGM(bossBgmKey, { fadeMs: 1800 }), 1800);
+  }
+
   // 魔王登場テロップ＋効果音（敵・Wave4）
   if (boss.type === 'demonlord') {
     gs.effects.push({type:'msg', x:CW/2, y:CH/2-20, timer:3000, text:'魔王が現れた！', color:'#ff2200', size:36});
@@ -1657,6 +1828,8 @@ function startNextWave() {
   document.getElementById('waveNum').textContent = gs.wave;
   gs.waveMsg = {text:`⚔ WAVE ${gs.wave} ⚔`, timer:2500, color:'#FFD700'};
   playWave();
+  // BGM: Wave2 以降は通常曲（Wave1 のみ専用曲）
+  playBGM(gs.wave === 1 ? 'wave1' : 'normal', { fadeMs: 2000 });
   updateEnemyCastleHud();
   nextWord();
   document.getElementById('type-input').focus();
@@ -1744,6 +1917,10 @@ function spawnEnemies(dt) {
     gs.units.push(hero);
     playHeroFanfare();
     gs.heroMsg = { timer: 3500 };
+    // Wave4: 勇者誕生BGM（1回再生）→ 終わったら魔王戦BGMに戻る
+    playBGM('hero', { fadeMs: 1200, loop: false, onEnd: () => {
+      if (gs.state === 'playing' && gs.wave === 4) playBGM('demon', { fadeMs: 1500 });
+    }});
   }
 }
 
@@ -2388,11 +2565,14 @@ function startGame(fromWave=1) {
   updateHUD();
   nextWord();
   document.getElementById('type-input').focus();
+  // BGM: Wave1 専用曲、それ以外は通常曲から
+  playBGM(fromWave === 1 ? 'wave1' : 'normal', { fadeMs: 1500 });
   requestAnimationFrame(ts => { gs.lastFrame = ts; requestAnimationFrame(gameLoop); });
 }
 
 function endGame(result) {
   gs.state = result;
+  stopBGM(1500);
   const ov = document.getElementById('overlay');
   ov.style.display = 'flex';
 
@@ -2457,6 +2637,8 @@ ${buildRankingHTML(gs.score)}
   // 保存済みの名前を入力欄に反映
   const savedName = getPlayerName();
   if (savedName) { const el = document.getElementById('playerNameInput'); if (el) el.value = savedName; }
+  // 音声設定パネルを初期同期
+  syncAudioPanel();
 })();
 </script>
 </body>
