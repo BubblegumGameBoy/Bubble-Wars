@@ -2320,14 +2320,6 @@ function gameLoop(ts) {
 // ═══════════════════════════════════════════════
 // RANKING SYSTEM
 // ═══════════════════════════════════════════════
-const DUMMY_SCORES = [
-  {name:'うんこ太郎',  score:128500, wave:5},
-  {name:'キーボード侍', score:96000, wave:5},
-  {name:'タイピング王',  score:72500, wave:5},
-  {name:'ゆびさきの魔術師', score:48000, wave:4},
-  {name:'はじめてのタイピング', score:21000, wave:3},
-];
-
 function loadRanking() {
   try { return JSON.parse(localStorage.getItem('soldiertypingRanking') || '[]'); } catch { return []; }
 }
@@ -2341,18 +2333,16 @@ function addToRanking(name, score, wave) {
   saveRanking(entries.slice(0, 20));
 }
 function buildRankingHTML(myScore) {
-  const user = loadRanking();
-  const all = [...DUMMY_SCORES, ...user].sort((a,b) => b.score - a.score);
-  const top = all.slice(0, 8);
+  const all = loadRanking().slice(0, 5);
+  if (all.length === 0) return '<p style="color:#556;font-size:12px;margin:6px 0;">まだスコアなし（ランキングページで確認できます）</p>';
   let html = `<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0;">
-<tr style="color:#aaa;border-bottom:1px solid #333;"><th style="text-align:left;padding:3px 6px;">#</th><th style="text-align:left;padding:3px 6px;">名前</th><th style="text-align:right;padding:3px 6px;">スコア</th><th style="text-align:right;padding:3px 6px;">到達Wave</th></tr>`;
-  top.forEach((e, i) => {
-    const isMe = e.score === myScore && !DUMMY_SCORES.includes(e);
+<tr style="color:#aaa;border-bottom:1px solid #333;"><th style="text-align:left;padding:3px 6px;">#</th><th style="text-align:left;padding:3px 6px;">名前</th><th style="text-align:right;padding:3px 6px;">スコア</th><th style="text-align:right;padding:3px 6px;">Wave</th></tr>`;
+  all.forEach((e, i) => {
+    const isMe = e.score === myScore;
     const color = i===0 ? '#FFD700' : i===1 ? '#C0C0C0' : i===2 ? '#CD7F32' : isMe ? '#4dff6e' : '#ccc';
     const bg = isMe ? 'background:#1a3a1a;' : '';
-    const medal = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : `${i+1}.`;
     html += `<tr style="${bg}color:${color};">
-<td style="padding:3px 6px;">${medal}</td>
+<td style="padding:3px 6px;">${i+1}.</td>
 <td style="padding:3px 6px;">${e.name}${isMe?' ◀ あなた':''}</td>
 <td style="text-align:right;padding:3px 6px;">${e.score.toLocaleString()}</td>
 <td style="text-align:right;padding:3px 6px;">Wave ${e.wave}</td></tr>`;

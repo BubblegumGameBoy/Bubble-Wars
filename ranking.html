@@ -62,7 +62,7 @@ tr:hover td { background: #111130; }
 </style>
 </head>
 <body>
-<h1>⚔️ RANKING ⚔️</h1>
+<h1>RANKING</h1>
 <p class="sub">ソルジャータイピング 歴代スコア</p>
 <div id="loading">読み込み中...</div>
 <table id="rank-table" style="display:none">
@@ -95,37 +95,30 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const DUMMY = [
-  {name:'うんこ太郎',  score:128500, wave:5, date:'2025/1/1'},
-  {name:'キーボード侍', score:96000,  wave:5, date:'2025/1/1'},
-  {name:'タイピング王',  score:72500,  wave:5, date:'2025/1/1'},
-  {name:'ゆびさきの魔術師', score:48000, wave:4, date:'2025/1/1'},
-  {name:'はじめてのタイピング', score:21000, wave:3, date:'2025/1/1'},
-];
-
-const medals = ['🥇','🥈','🥉'];
-
 function render(docs) {
-  const real = docs.map(d => d.data());
-  const all = [...real, ...DUMMY].sort((a,b) => b.score - a.score).slice(0, 20);
+  const all = docs.map(d => d.data()).slice(0, 30);
 
   const tbody = document.getElementById('rank-body');
   tbody.innerHTML = '';
-  all.forEach((e, i) => {
-    const rank = i + 1;
-    const cls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
-    const label = medals[i] ?? `${rank}.`;
-    const waveCls = e.wave === 5 ? 'wave-badge wave-5' : 'wave-badge';
-    const tr = document.createElement('tr');
-    if (cls) tr.className = cls;
-    tr.innerHTML = `
-      <td>${label}</td>
-      <td>${e.name}</td>
-      <td><b>${e.score.toLocaleString()}</b></td>
-      <td><span class="${waveCls}">Wave ${e.wave}</span></td>
-      <td style="color:#445;font-size:11px;">${e.date ?? ''}</td>`;
-    tbody.appendChild(tr);
-  });
+
+  if (all.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#445;padding:24px;">まだスコアがありません</td></tr>';
+  } else {
+    all.forEach((e, i) => {
+      const rank = i + 1;
+      const cls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
+      const waveCls = e.wave === 5 ? 'wave-badge wave-5' : 'wave-badge';
+      const tr = document.createElement('tr');
+      if (cls) tr.className = cls;
+      tr.innerHTML = `
+        <td>${rank}.</td>
+        <td>${e.name}</td>
+        <td><b>${e.score.toLocaleString()}</b></td>
+        <td><span class="${waveCls}">Wave ${e.wave}</span></td>
+        <td style="color:#445;font-size:11px;">${e.date ?? ''}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('rank-table').style.display = '';
