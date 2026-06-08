@@ -95,8 +95,20 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// シードスコア（実プレイのスコアと一緒にソートされる）
+const SEED = [
+  {name:'うんこ',                 score:287000, wave:5, date:'-'},
+  {name:'こうた',                 score:264500, wave:5, date:'-'},
+  {name:'バトルロワイアルZの使者', score:251000, wave:5, date:'-'},
+  {name:'AAA',                   score:238000, wave:5, date:'-'},
+  {name:'勇者',                   score:226500, wave:5, date:'-'},
+  {name:'Hunter',                score:213000, wave:5, date:'-'},
+  {name:'ランスロット',            score:205000, wave:5, date:'-'},
+];
+
 function render(docs) {
-  const all = docs.map(d => d.data()).slice(0, 30);
+  const real = docs.map(d => d.data());
+  const all = [...real, ...SEED].sort((a,b) => b.score - a.score).slice(0, 30);
 
   const tbody = document.getElementById('rank-body');
   tbody.innerHTML = '';
