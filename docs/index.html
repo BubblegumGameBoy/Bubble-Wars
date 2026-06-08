@@ -205,13 +205,17 @@ function getAC() {
     try {
       _ac = new (window.AudioContext || window.webkitAudioContext)();
       _seGain = _ac.createGain();
-      _seGain.gain.value = audioSettings.seOn ? audioSettings.seVol : 0;
+      _seGain.gain.value = audioSettings.seOn ? audioSettings.seVol * SE_BOOST : 0;
       _seGain.connect(_ac.destination);
     } catch(e){}
   }
   return _ac;
 }
 function seOut() { getAC(); return _seGain || _ac.destination; }
+
+// 効果音を増幅・BGMを減衰する係数（スライダー値に掛ける）
+const SE_BOOST = 2.2;
+const BGM_SCALE = 0.5;
 
 // ── 音声設定（localStorage 永続化） ──
 const audioSettings = (() => {
@@ -225,7 +229,7 @@ function saveAudioSettings() {
   try { localStorage.setItem('soldiertypingAudio', JSON.stringify(audioSettings)); } catch {}
 }
 function applySeSettings() {
-  if (_seGain) _seGain.gain.value = audioSettings.seOn ? audioSettings.seVol : 0;
+  if (_seGain) _seGain.gain.value = audioSettings.seOn ? audioSettings.seVol * SE_BOOST : 0;
 }
 
 // ═══════════════════════════════════════════════
@@ -274,7 +278,7 @@ function _fade(el, from, to, ms, after) {
 function playBGM(key, opts = {}) {
   const { fadeMs = 2000, loop = true, onEnd = null, restart = true } = opts;
   if (!audioSettings.bgmOn) { _bgmCurrent = key; return; }
-  const target = audioSettings.bgmVol;
+  const target = audioSettings.bgmVol * BGM_SCALE;
   // 現在の曲をフェードアウト＆停止
   const prevKey = _bgmCurrent;
   if (prevKey && prevKey !== key) {
@@ -302,7 +306,7 @@ function stopBGM(fadeMs = 1500) {
 function applyBgmVolume() {
   if (_bgmCurrent && audioSettings.bgmOn) {
     const el = _getBgmEl(_bgmCurrent);
-    el.volume = audioSettings.bgmVol;
+    el.volume = audioSettings.bgmVol * BGM_SCALE;
   }
 }
 function setBgmEnabled(on) {
