@@ -1262,14 +1262,16 @@ function doBossSpecial(boss) {
       break;
     }
     case 'bat': {
-      // 大蝙蝠の超音波 — 画面を貫く音波リング＋全体ダメージ＆スタン
+      // 大蝙蝠の超音波 — 近距離音波リング＋範囲内ダメージ
       gs.effects.push({type:'msg', x:boss.x, y:GROUND-150, timer:1000, text:'キィィィン！', color:'#aaccff', size:22});
-      for (let r=1; r<=5; r++) {
-        gs.effects.push({type:'shockwave', x:boss.x, y:GROUND-60, timer:500+r*90, maxT:500+r*90, r:r*55, color:'#bbddff'});
+      for (let r=1; r<=3; r++) {
+        gs.effects.push({type:'shockwave', x:boss.x, y:GROUND-60, timer:400+r*90, maxT:400+r*90, r:r*40, color:'#bbddff'});
       }
       for (const a of allies) {
-        a.hp -= Math.round(boss.dmg*0.4);
-        if (a.hp <= 0) a.state = 'dead';
+        if (Math.abs(a.x - boss.x) < 120) {
+          a.hp -= Math.round(boss.dmg*0.4);
+          if (a.hp <= 0) a.state = 'dead';
+        }
       }
       // 甲高い超音波スイープ
       tone(2200, 0.35, 'sine', 0.07, 700);
