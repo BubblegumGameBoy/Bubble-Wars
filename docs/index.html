@@ -1360,7 +1360,14 @@ function preventIME(e) {
 function handleTyping() {
   if (gs.state !== 'playing') return;
   const inp = document.getElementById('type-input');
-  let val = inp.value.toLowerCase().replace(/[^a-z]/g,'');
+  const raw = inp.value;
+  let val = raw.toLowerCase().replace(/[^a-z]/g,'');
+  // IME ON 検出：非ASCII文字が含まれていたら警告
+  if (/[^\x00-\x7F]/.test(raw)) {
+    inp.value = '';
+    gs.imeWarning = 120; // フレーム数で表示
+    return;
+  }
   if (!gs.currentWord) { inp.value = val; return; }
   const units = gs.currentWord.units;
   const status = kanaMatch(units, val);
@@ -2455,10 +2462,23 @@ function drawEffects() {
     ctx.globalAlpha = 1;
   }
 
+  // IME ON 警告
+  if (gs.imeWarning > 0) {
+    gs.imeWarning -= 1;
+    const a = Math.min(1, gs.imeWarning / 20);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(180,0,0,0.88)';
+    ctx.fillRect(0, CH - 68, CW, 52);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠ 日本語入力がONです！「半角/全角」キーでOFFにしてください', CW/2, CH - 36);
+    ctx.restore();
+  }
+
   ctx.restore();
 }
-
-function draw() {
   ctx.clearRect(0,0,CW,CH);
   drawBackground();
   drawPlayerCastle();
