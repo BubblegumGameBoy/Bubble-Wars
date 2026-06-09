@@ -2463,7 +2463,7 @@ function drawEffects() {
   }
 
   // IME ON 警告
-  if (gs.imeWarning > 0) {
+  if ((gs.imeWarning || 0) > 0) {
     gs.imeWarning -= 1;
     const a = Math.min(1, gs.imeWarning / 20);
     ctx.save();
