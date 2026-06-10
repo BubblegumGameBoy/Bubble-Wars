@@ -1493,7 +1493,6 @@ function doBossSpecial(boss) {
         t.hp -= Math.round(boss.dmg*1.6);
         t.stunTimer = 900;
         if (t.hp <= 0) t.state = 'dead';
-        else if (t.isHero) heroHit(t);
       });
       // ネコの鳴き声＋ひっかき音
       tone(900, 0.18, 'sawtooth', 0.08, 1500);
@@ -1511,7 +1510,6 @@ function doBossSpecial(boss) {
         if (Math.abs(a.x - boss.x) < 120) {
           a.hp -= Math.round(boss.dmg*0.4);
           if (a.hp <= 0) a.state = 'dead';
-          else if (a.isHero) heroHit(a);
         }
       }
       // 甲高い超音波スイープ
@@ -1581,7 +1579,6 @@ function doBossSpecial(boss) {
             if (unit) {
               unit.hp -= Math.round(bossDmg * 1.5);
               if (unit.hp <= 0) unit.state = 'dead';
-              else if (unit.isHero) heroHit(unit);
             }
             tone(880 + i*330, 0.5, 'sine', 0.12, 440 + i*110);
           }, 180);
@@ -1595,7 +1592,7 @@ function doBossSpecial(boss) {
 // 勇者の被弾リアクション：hitフレーム表示＋地面に沿って後ろへノックバック
 function heroHit(h) {
   if (h.state === 'dead') return;
-  h.hitT = 450;
+  h.hitT = 700;
   h.x = Math.max(40, h.x - 14);
 }
 
@@ -1637,7 +1634,6 @@ function updateUnits(dt) {
       if (u.attackTimer >= u.atkRate) {
         u.attackTimer = 0;
         u.target.hp -= u.dmg;
-        if (u.target.isHero) heroHit(u.target);
         const ty = GROUND - u.target.spriteH * S / 2;
         if (u.type === 'archer') {
           const sy = GROUND - u.spriteH * S / 2;
@@ -1909,7 +1905,6 @@ function updateEffects(dt) {
         tgt.hp -= e.dmg;
         if (e.stun) tgt.stunTimer = (tgt.stunTimer||0) + e.stun;
         if (tgt.hp <= 0) tgt.state = 'dead';
-        else if (tgt.isHero) heroHit(tgt);
         gs.effects.push({type:'hit', x:tgt.x, y:GROUND-tgt.spriteH*S/2, timer:380});
       }
     }
