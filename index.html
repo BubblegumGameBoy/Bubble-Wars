@@ -1055,7 +1055,7 @@ const IMAGE_DEFS = {
   soldier:   {frames:['images/soldier_1.png','images/soldier_3.png'], drawH:80,  yOff:17},
   goblin:    {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
   hobgoblin: {frames:['images/goblin_1.png','images/goblin_2.png'],   drawH:116, yOff:39},
-  hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:78,  yOff:7},
+  hero:      {frames:['images/hero_1.png','images/hero_2.png'],       drawH:78,  yOff:7, hit:'images/hero_hit.png'},
   cat:       {frames:['images/cat_boss.png'],                         drawH:76, yOff:13},
   bat:       {frames:['images/bat_boss.png'],                         drawH:76, yOff:13},
   allycat:   {frames:['images/cat_boss.png'],                         drawH:56, yOff:10},
@@ -1067,7 +1067,7 @@ const IMAGE_DEFS = {
 const loadedImages = {};
 let imagesReady = false;
 function preloadImages(done) {
-  const paths = [...new Set(Object.values(IMAGE_DEFS).flatMap(d => d.frames))];
+  const paths = [...new Set(Object.values(IMAGE_DEFS).flatMap(d => [...d.frames, ...(d.hit ? [d.hit] : [])]))];
   let count = 0;
   const total = paths.length;
   paths.forEach(p => {
@@ -1472,6 +1472,7 @@ function doBossSpecial(boss) {
         t.hp -= Math.round(boss.dmg*1.6);
         t.stunTimer = 900;
         if (t.hp <= 0) t.state = 'dead';
+        else if (t.isHero) heroHit(t);
       });
       // ネコの鳴き声＋ひっかき音
       tone(900, 0.18, 'sawtooth', 0.08, 1500);
@@ -1489,6 +1490,7 @@ function doBossSpecial(boss) {
         if (Math.abs(a.x - boss.x) < 120) {
           a.hp -= Math.round(boss.dmg*0.4);
           if (a.hp <= 0) a.state = 'dead';
+          else if (a.isHero) heroHit(a);
         }
       }
       // 甲高い超音波スイープ
@@ -1514,6 +1516,7 @@ function doBossSpecial(boss) {
           a.hp -= Math.round(boss.dmg * 1.2);
           if (a.hp <= 0) { a.state='dead'; }
           else {
+            if (a.isHero) heroHit(a);
             a.x = Math.max(80, a.x - 120);
             if (a.state==='fight') { a.state='walk'; a.target=null; }
           }
@@ -1557,6 +1560,7 @@ function doBossSpecial(boss) {
             if (unit) {
               unit.hp -= Math.round(bossDmg * 1.5);
               if (unit.hp <= 0) unit.state = 'dead';
+              else if (unit.isHero) heroHit(unit);
             }
             tone(880 + i*330, 0.5, 'sine', 0.12, 440 + i*110);
           }, 180);
@@ -1565,6 +1569,13 @@ function doBossSpecial(boss) {
       break;
     }
   }
+}
+
+// 勇者の被弾リアクション：hitフレーム表示＋地面に沿って後ろへノックバック
+function heroHit(h) {
+  if (h.state === 'dead') return;
+  h.hitT = 450;
+  h.x = Math.max(40, h.x - 14);
 }
 
 // ═══════════════════════════════════════════════
@@ -1586,6 +1597,7 @@ function updateUnits(dt) {
       u.animFrame = (u.animFrame+1)%_fc; u.animTimer = 0;
     }
     if (u.lungeT > 0) u.lungeT -= dt;
+    if (u.hitT > 0) u.hitT -= dt;
 
     // Boss special timer
     if (u.isBoss) {
@@ -1604,6 +1616,7 @@ function updateUnits(dt) {
       if (u.attackTimer >= u.atkRate) {
         u.attackTimer = 0;
         u.target.hp -= u.dmg;
+        if (u.target.isHero) heroHit(u.target);
         const ty = GROUND - u.target.spriteH * S / 2;
         if (u.type === 'archer') {
           const sy = GROUND - u.spriteH * S / 2;
@@ -1875,6 +1888,7 @@ function updateEffects(dt) {
         tgt.hp -= e.dmg;
         if (e.stun) tgt.stunTimer = (tgt.stunTimer||0) + e.stun;
         if (tgt.hp <= 0) tgt.state = 'dead';
+        else if (tgt.isHero) heroHit(tgt);
         gs.effects.push({type:'hit', x:tgt.x, y:GROUND-tgt.spriteH*S/2, timer:380});
       }
     }
@@ -2210,7 +2224,12 @@ function drawUnitInner(u) {
     }
     if (imgDef) {
       const frameIdx = u.animFrame % imgDef.frames.length;
-      const img = loadedImages[imgDef.frames[frameIdx]];
+      let img = loadedImages[imgDef.frames[frameIdx]];
+      // 被弾モーション：hit画像があり読み込めていればそちらを使う
+      if ((u.hitT || 0) > 0 && imgDef.hit) {
+        const hitImg = loadedImages[imgDef.hit];
+        if (hitImg && hitImg.complete && hitImg.naturalWidth) img = hitImg;
+      }
       if (drawImageUnit(u, img, imgDef.drawH, imgDef.yOff)) return;
     }
   }
