@@ -2710,6 +2710,11 @@ ${buildRankingHTML(gs.score)}
   if (savedName) { const el = document.getElementById('playerNameInput'); if (el) el.value = savedName; }
   // 音声設定パネルを初期同期
   syncAudioPanel();
+  // URLパラメータ ?wave=N で自動スタート（テスト用）
+  const _waveParam = parseInt(new URLSearchParams(location.search).get('wave'));
+  if (_waveParam >= 1 && _waveParam <= 5) {
+    setTimeout(() => startGame(_waveParam), 300);
+  }
 })();
 </script>
 </body>
