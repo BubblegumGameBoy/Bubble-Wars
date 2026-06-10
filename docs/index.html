@@ -162,8 +162,8 @@ body {
     <div id="word-kana">－</div>
     <div id="word-roma"><span id="roma-done"></span><span id="roma-left" style="color:#445">ここにワードが出ます</span></div>
     <input id="type-input" type="text" autocomplete="off" spellcheck="false"
-           inputmode="latin" placeholder="ローマ字で入力"
-           oninput="handleTyping()" onkeydown="preventIME(event)">
+           inputmode="latin" placeholder="ローマ字で入力" readonly
+           style="caret-color:transparent;cursor:default;">
   </div>
 </div>
 
@@ -1347,21 +1347,42 @@ function updateWordDisplayError(inputVal) {
     `<span style="color:#ff4136;background:#2a0808;border-bottom:2px solid #ff4136">${wrongChar}</span>` +
     `<span style="color:#445">${left}</span>`;
 }
-function preventIME(e) {
-  if (e.key===' ') e.preventDefault();
-  if (e.key==='Enter' && gs.waitingForEnter) {
+// キーダウンで直接1文字ずつ拾う（IME完全回避）
+document.addEventListener('keydown', function(e) {
+  // IME変換中は完全無視
+  if (e.isComposing) return;
+
+  // Enter: 次Waveへ
+  if (e.key === 'Enter' && gs.waitingForEnter) {
     gs.waitingForEnter = false;
     startNextWave();
+    return;
   }
-  if (e.key==='Escape' && (gs.state==='playing' || gs.state==='waveclear')) {
+  // Escape: ゲーム終了
+  if (e.key === 'Escape' && (gs.state === 'playing' || gs.state === 'waveclear')) {
     endGame('lose');
+    return;
   }
-}
-function handleTyping() {
+
   if (gs.state !== 'playing') return;
+
+  // Backspace: 1文字削除
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    processTyping(gs.inputValue.slice(0, -1));
+    return;
+  }
+
+  // a-z のみ受け付け（スペース・記号・日本語すべて無視）
+  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+    e.preventDefault();
+    processTyping(gs.inputValue + e.key.toLowerCase());
+  }
+});
+
+function processTyping(val) {
   const inp = document.getElementById('type-input');
-  let val = inp.value.toLowerCase().replace(/[^a-z]/g,'');
-  if (!gs.currentWord) { inp.value = val; return; }
+  if (!gs.currentWord) { gs.inputValue = val; inp.value = val; return; }
   const units = gs.currentWord.units;
   const status = kanaMatch(units, val);
   if (status !== 'no') {
@@ -1378,7 +1399,6 @@ function handleTyping() {
       nextWord();
     }
   } else {
-    // Stop at wrong position: cap to correct chars + 1 wrong char
     const maxLen = gs.inputValue.length + 1;
     if (val.length > maxLen) val = val.slice(0, maxLen);
     inp.value = val;
@@ -1387,6 +1407,9 @@ function handleTyping() {
     updateWordDisplayError(val);
   }
 }
+// 後方互換（参照が残っている場合用）
+function preventIME() {}
+function handleTyping() {}
 
 // ═══════════════════════════════════════════════
 // SPAWN
