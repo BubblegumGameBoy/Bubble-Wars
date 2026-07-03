@@ -7,12 +7,15 @@
 <title>ソルジャータイピング ランキング</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
 body {
   background: #0a0a1a;
   color: #fff;
   font-family: 'Courier New', monospace;
-  min-height: 100vh;
-  padding: 20px 16px;
+  padding: 16px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 h1 {
   text-align: center;
@@ -21,22 +24,47 @@ h1 {
   letter-spacing: 3px;
   margin-bottom: 4px;
   text-shadow: 0 0 12px #FFD70066;
+  flex: none;
 }
 .sub {
   text-align: center;
   color: #556;
   font-size: 11px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
+  flex: none;
 }
+/* スクロールできる一覧エリア */
+#scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #1a1a2e;
+  border-radius: 6px;
+  position: relative;
+}
+/* スクロールバーを見やすく */
+#scroll-area::-webkit-scrollbar { width: 10px; }
+#scroll-area::-webkit-scrollbar-track { background: #0d0d22; }
+#scroll-area::-webkit-scrollbar-thumb { background: #33335a; border-radius: 5px; }
+#scroll-area::-webkit-scrollbar-thumb:hover { background: #4a4a7a; }
+#scroll-area { scrollbar-width: thin; scrollbar-color: #33335a #0d0d22; }
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #12122a;
+}
 th {
   color: #aaa;
   border-bottom: 1px solid #333;
-  padding: 5px 8px;
+  padding: 7px 8px;
   text-align: left;
 }
 th:last-child, td:last-child { text-align: right; }
@@ -59,25 +87,39 @@ tr:hover td { background: #111130; }
 }
 .wave-5 { background: #2a1a3a; color: #cc88ff; }
 #loading { text-align: center; color: #556; padding: 40px; font-size: 14px; }
-#updated { text-align: center; color: #334; font-size: 10px; margin-top: 12px; }
+#updated { text-align: center; color: #334; font-size: 10px; margin-top: 8px; flex: none; }
+/* スクロールを促すヒント */
+#scroll-hint {
+  text-align: center;
+  color: #667;
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin: 6px 0 2px;
+  flex: none;
+}
+#scroll-hint .arrow { animation: bob 1.4s ease-in-out infinite; display: inline-block; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 </style>
 </head>
 <body>
 <h1>RANKING</h1>
 <p class="sub">ソルジャータイピング 歴代スコア</p>
-<div id="loading">読み込み中...</div>
-<table id="rank-table" style="display:none">
-  <thead>
-    <tr>
-      <th style="width:36px;">#</th>
-      <th>名前</th>
-      <th>スコア</th>
-      <th>Wave</th>
-      <th>日付</th>
-    </tr>
-  </thead>
-  <tbody id="rank-body"></tbody>
-</table>
+<div id="scroll-area">
+  <div id="loading">読み込み中...</div>
+  <table id="rank-table" style="display:none">
+    <thead>
+      <tr>
+        <th style="width:36px;">#</th>
+        <th>名前</th>
+        <th>スコア</th>
+        <th>Wave</th>
+        <th>日付</th>
+      </tr>
+    </thead>
+    <tbody id="rank-body"></tbody>
+  </table>
+</div>
+<div id="scroll-hint"><span class="arrow">▼</span> スクロールで続きを見る <span class="arrow">▼</span></div>
 <div id="updated"></div>
 
 <script type="module">
@@ -96,6 +138,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// 表示する最大件数
+const MAX_ROWS = 100;
+
 // シードスコア（実プレイのスコアと一緒にソートされる）
 const SEED = [
   {name:'うんこ',                 score:287000, wave:5, date:'2026/6/8'},
@@ -109,7 +154,7 @@ const SEED = [
 
 function render(docs) {
   const real = docs.map(d => d.data());
-  const all = [...real, ...SEED].sort((a,b) => b.score - a.score).slice(0, 30);
+  const all = [...real, ...SEED].sort((a,b) => b.score - a.score).slice(0, MAX_ROWS);
 
   const tbody = document.getElementById('rank-body');
   tbody.innerHTML = '';
@@ -136,9 +181,14 @@ function render(docs) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('rank-table').style.display = '';
   document.getElementById('updated').textContent = '最終更新: ' + new Date().toLocaleTimeString('ja-JP');
+
+  // スクロールできる件数がある時だけヒントを表示
+  const area = document.getElementById('scroll-area');
+  const hint = document.getElementById('scroll-hint');
+  hint.style.visibility = (area.scrollHeight > area.clientHeight + 4) ? 'visible' : 'hidden';
 }
 
-const q = query(collection(db, 'scores'), orderBy('score', 'desc'), limit(50));
+const q = query(collection(db, 'scores'), orderBy('score', 'desc'), limit(200));
 onSnapshot(q, snap => render(snap.docs), err => {
   document.getElementById('loading').textContent = 'ランキングの取得に失敗しました';
   console.error(err);
