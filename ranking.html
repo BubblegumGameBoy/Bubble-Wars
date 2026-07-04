@@ -188,7 +188,7 @@ function render(docs) {
   hint.style.visibility = (area.scrollHeight > area.clientHeight + 4) ? 'visible' : 'hidden';
 }
 
-const q = query(collection(db, 'scores_soldier_typing'), orderBy('score', 'desc'), limit(200));
+const q = query(collection(db, 'scores'), orderBy('score', 'desc'), limit(200));
 onSnapshot(q, snap => render(snap.docs), err => {
   document.getElementById('loading').textContent = 'ランキングの取得に失敗しました';
   console.error(err);

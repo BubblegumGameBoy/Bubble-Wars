@@ -195,7 +195,7 @@ const db = getFirestore(app);
 
 window._submitScore = async function(name, score, wave) {
   try {
-    await addDoc(collection(db, 'scores_soldier_typing'), {
+    await addDoc(collection(db, 'scores'), {
       name, score, wave,
       date: new Date().toLocaleDateString('ja-JP'),
       timestamp: serverTimestamp()
