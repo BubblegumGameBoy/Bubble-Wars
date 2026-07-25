@@ -2578,24 +2578,52 @@ function addToRanking(name, score, wave) {
   const entries = loadRanking();
   entries.push({name, score, wave, date: new Date().toLocaleDateString('ja-JP')});
   entries.sort((a,b) => b.score - a.score);
-  saveRanking(entries.slice(0, 20));
+  saveRanking(entries.slice(0, 100));
+}
+// 同一人物とみなす名前キー（全角/半角・大文字小文字・空白の違いを吸収）
+function rankNameKey(name) {
+  let s = String(name ?? '').trim();
+  try { s = s.normalize('NFKC'); } catch {}
+  return s.replace(/\s+/g, '').toLowerCase();
+}
+// 同じ名前の記録はベストスコアの1件にまとめる（履歴自体は消さない）
+function mergeRankingByName(rows) {
+  const map = new Map();
+  rows.forEach(r => {
+    const key = rankNameKey(r.name);
+    const cur = map.get(key);
+    if (!cur) {
+      map.set(key, {...r, plays: 1});
+    } else if ((r.score ?? 0) > (cur.score ?? 0)) {
+      map.set(key, {...r, plays: cur.plays + 1});
+    } else {
+      cur.plays++;
+    }
+  });
+  return [...map.values()].sort((a,b) => (b.score ?? 0) - (a.score ?? 0));
 }
 function buildRankingHTML(myScore) {
-  const all = loadRanking().slice(0, 5);
+  const all = mergeRankingByName(loadRanking()).slice(0, 5);
   if (all.length === 0) return '<p style="color:#556;font-size:12px;margin:6px 0;">まだスコアなし（ランキングページで確認できます）</p>';
+  const myKey = rankNameKey(getPlayerName() || 'プレイヤー');
   let html = `<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0;">
 <tr style="color:#aaa;border-bottom:1px solid #333;"><th style="text-align:left;padding:3px 6px;">#</th><th style="text-align:left;padding:3px 6px;">名前</th><th style="text-align:right;padding:3px 6px;">スコア</th><th style="text-align:right;padding:3px 6px;">Wave</th></tr>`;
   all.forEach((e, i) => {
-    const isMe = e.score === myScore;
+    const isMe = rankNameKey(e.name) === myKey || e.score === myScore;
     const color = i===0 ? '#FFD700' : i===1 ? '#C0C0C0' : i===2 ? '#CD7F32' : isMe ? '#4dff6e' : '#ccc';
     const bg = isMe ? 'background:#1a3a1a;' : '';
     html += `<tr style="${bg}color:${color};">
 <td style="padding:3px 6px;">${i+1}.</td>
-<td style="padding:3px 6px;">${e.name}${isMe?' ◀ あなた':''}</td>
+<td style="padding:3px 6px;">${e.name}${e.plays>1?`<span style="font-size:10px;color:#7ac77a;"> ×${e.plays}</span>`:''}${isMe?' ◀ あなた':''}</td>
 <td style="text-align:right;padding:3px 6px;">${e.score.toLocaleString()}</td>
 <td style="text-align:right;padding:3px 6px;">Wave ${e.wave}</td></tr>`;
   });
   html += '</table>';
+  // 表示はベストスコアのみなので、今回のスコアが自己ベストでない時は併記する
+  const myBest = mergeRankingByName(loadRanking()).find(e => rankNameKey(e.name) === myKey);
+  if (myBest && (myBest.score ?? 0) > myScore) {
+    html += `<p style="color:#889;font-size:11px;margin:-2px 0 6px;">今回: ${myScore.toLocaleString()} pt ／ 自己ベスト: ${myBest.score.toLocaleString()} pt</p>`;
+  }
   return html;
 }
 

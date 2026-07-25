@@ -84,8 +84,45 @@ tr:hover td { background: #111130; }
   font-size: 11px;
   background: #1a1a3a;
   color: #88aaff;
+  white-space: nowrap;
 }
 .wave-5 { background: #2a1a3a; color: #cc88ff; }
+/* 同じ名前をまとめた時の記録数 */
+.plays {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  background: #1a2a1a;
+  color: #7ac77a;
+  vertical-align: middle;
+}
+/* 表示切り替え */
+#view-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex: none;
+}
+#view-toggle button {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 5px 12px;
+  border: 1px solid #26264a;
+  border-radius: 999px;
+  background: #101028;
+  color: #778;
+  cursor: pointer;
+}
+#view-toggle button:hover { border-color: #3a3a6a; color: #aab; }
+#view-toggle button.on {
+  background: #1d1d44;
+  border-color: #FFD70066;
+  color: #FFD700;
+}
+#count { text-align: center; color: #445; font-size: 10px; margin-bottom: 6px; flex: none; }
 #loading { text-align: center; color: #556; padding: 40px; font-size: 14px; }
 #updated { text-align: center; color: #334; font-size: 10px; margin-top: 8px; flex: none; }
 /* スクロールを促すヒント */
@@ -104,6 +141,11 @@ tr:hover td { background: #111130; }
 <body>
 <h1>RANKING</h1>
 <p class="sub">ソルジャータイピング 歴代スコア</p>
+<div id="view-toggle">
+  <button id="btn-best" class="on" type="button">1人1件（ベスト）</button>
+  <button id="btn-all" type="button">すべての記録</button>
+</div>
+<div id="count"></div>
 <div id="scroll-area">
   <div id="loading">読み込み中...</div>
   <table id="rank-table" style="display:none">
@@ -152,31 +194,73 @@ const SEED = [
   {name:'ランスロット',            score:205000, wave:5, date:'2026/6/8'},
 ];
 
-function render(docs) {
-  const real = docs.map(d => d.data());
-  const all = [...real, ...SEED].sort((a,b) => b.score - a.score).slice(0, MAX_ROWS);
+// 「1人1件（ベスト）」か「すべての記録」か。スコア自体は消さず、表示だけを切り替える
+let mergeSameName = true;
+let allRows = [];
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+// 同一人物とみなす名前キー。全角/半角・大文字小文字・空白の違いを吸収する
+function nameKey(name) {
+  let s = String(name ?? '').trim();
+  try { s = s.normalize('NFKC'); } catch {}
+  return s.replace(/\s+/g, '').toLowerCase();
+}
+
+// 同じ名前の記録をベストスコアの1件にまとめる（元データはそのまま）
+function mergeByName(rows) {
+  const map = new Map();
+  rows.forEach(r => {
+    const key = nameKey(r.name);
+    const cur = map.get(key);
+    if (!cur) {
+      map.set(key, { ...r, plays: 1 });
+    } else if ((r.score ?? 0) > (cur.score ?? 0)) {
+      map.set(key, { ...r, plays: cur.plays + 1 });
+    } else {
+      cur.plays++;
+    }
+  });
+  return [...map.values()];
+}
+
+function draw() {
+  const rows = (mergeSameName ? mergeByName(allRows) : allRows.map(r => ({ ...r, plays: 1 })))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, MAX_ROWS);
 
   const tbody = document.getElementById('rank-body');
   tbody.innerHTML = '';
 
-  if (all.length === 0) {
+  if (rows.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#445;padding:24px;">まだスコアがありません</td></tr>';
   } else {
-    all.forEach((e, i) => {
+    rows.forEach((e, i) => {
       const rank = i + 1;
       const cls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
       const waveCls = e.wave === 5 ? 'wave-badge wave-5' : 'wave-badge';
+      const plays = e.plays > 1
+        ? `<span class="plays" title="${e.plays}件の記録のうちベストスコア">×${e.plays}</span>`
+        : '';
       const tr = document.createElement('tr');
       if (cls) tr.className = cls;
       tr.innerHTML = `
         <td>${rank}.</td>
-        <td>${e.name}</td>
-        <td><b>${e.score.toLocaleString()}</b></td>
-        <td><span class="${waveCls}">Wave ${e.wave}</span></td>
-        <td style="color:#445;font-size:11px;">${e.date ?? ''}</td>`;
+        <td>${esc(e.name)}${plays}</td>
+        <td><b>${(e.score ?? 0).toLocaleString()}</b></td>
+        <td><span class="${waveCls}">Wave ${esc(e.wave)}</span></td>
+        <td style="color:#445;font-size:11px;">${esc(e.date)}</td>`;
       tbody.appendChild(tr);
     });
   }
+
+  const players = mergeByName(allRows).length;
+  document.getElementById('count').textContent = mergeSameName
+    ? `${players}人 / 全${allRows.length}件（同じ名前はベストスコアのみ表示）`
+    : `全${allRows.length}件を表示中（${players}人）`;
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('rank-table').style.display = '';
@@ -188,8 +272,21 @@ function render(docs) {
   hint.style.visibility = (area.scrollHeight > area.clientHeight + 4) ? 'visible' : 'hidden';
 }
 
-const q = query(collection(db, 'scores'), orderBy('score', 'desc'), limit(200));
-onSnapshot(q, snap => render(snap.docs), err => {
+function setMode(merge) {
+  mergeSameName = merge;
+  document.getElementById('btn-best').classList.toggle('on', merge);
+  document.getElementById('btn-all').classList.toggle('on', !merge);
+  document.getElementById('scroll-area').scrollTop = 0;
+  draw();
+}
+document.getElementById('btn-best').addEventListener('click', () => setMode(true));
+document.getElementById('btn-all').addEventListener('click', () => setMode(false));
+
+const q = query(collection(db, 'scores'), orderBy('score', 'desc'), limit(500));
+onSnapshot(q, snap => {
+  allRows = [...snap.docs.map(d => d.data()), ...SEED];
+  draw();
+}, err => {
   document.getElementById('loading').textContent = 'ランキングの取得に失敗しました';
   console.error(err);
 });
