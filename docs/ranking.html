@@ -87,17 +87,6 @@ tr:hover td { background: #111130; }
   white-space: nowrap;
 }
 .wave-5 { background: #2a1a3a; color: #cc88ff; }
-/* 同じ名前をまとめた時の記録数 */
-.plays {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 5px;
-  border-radius: 3px;
-  font-size: 10px;
-  background: #1a2a1a;
-  color: #7ac77a;
-  vertical-align: middle;
-}
 /* 表示切り替え */
 #view-toggle {
   display: flex;
@@ -242,14 +231,11 @@ function draw() {
       const rank = i + 1;
       const cls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
       const waveCls = e.wave === 5 ? 'wave-badge wave-5' : 'wave-badge';
-      const plays = e.plays > 1
-        ? `<span class="plays" title="${e.plays}件の記録のうちベストスコア">×${e.plays}</span>`
-        : '';
       const tr = document.createElement('tr');
       if (cls) tr.className = cls;
       tr.innerHTML = `
         <td>${rank}.</td>
-        <td>${esc(e.name)}${plays}</td>
+        <td>${esc(e.name)}</td>
         <td><b>${(e.score ?? 0).toLocaleString()}</b></td>
         <td><span class="${waveCls}">Wave ${esc(e.wave)}</span></td>
         <td style="color:#445;font-size:11px;">${esc(e.date)}</td>`;

@@ -2606,7 +2606,7 @@ function buildRankingHTML(myScore) {
     const bg = isMe ? 'background:#1a3a1a;' : '';
     html += `<tr style="${bg}color:${color};">
 <td style="padding:3px 6px;">${i+1}.</td>
-<td style="padding:3px 6px;">${e.name}${e.plays>1?`<span style="font-size:10px;color:#7ac77a;"> ×${e.plays}</span>`:''}${isMe?' ◀ あなた':''}</td>
+<td style="padding:3px 6px;">${e.name}${isMe?' ◀ あなた':''}</td>
 <td style="text-align:right;padding:3px 6px;">${e.score.toLocaleString()}</td>
 <td style="text-align:right;padding:3px 6px;">Wave ${e.wave}</td></tr>`;
   });
